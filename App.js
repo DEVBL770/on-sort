@@ -1,9 +1,9 @@
 // On sort — version native (Expo / React Native)
 // Données de test : tarifs et horaires indicatifs. Photos : Wikimedia Commons. Agenda : Que faire à Paris (Ville de Paris).
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, Image, Modal, StyleSheet,
-  Linking, Share, Platform, StatusBar, useWindowDimensions, ActivityIndicator, SafeAreaView,
+  Linking, Share, Platform, StatusBar, useWindowDimensions, ActivityIndicator, SafeAreaView, FlatList, Switch, Alert,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -198,7 +198,7 @@ function evDates(p, date) { const a = p.ds0, b = p.de0; if (key(a) === key(b)) r
 const UA = { 'Api-User-Agent': 'OnSort/0.1 (prototype appli familles)' };
 async function fetchPhotos(id) {
   const q = PQ[id]; if (!q) return null;
-  const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap') + '&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=1000&iiextmetadatafilter=Artist|LicenseShortName';
+  const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap') + '&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=640&iiextmetadatafilter=Artist|LicenseShortName';
   const j = await (await fetch(u, { headers: UA })).json();
   const pages = j && j.query && j.query.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 0) - (b.index || 0)) : [];
   const out = [];
@@ -263,6 +263,7 @@ function Main() {
   const { width, height } = useWindowDimensions();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState('explore');
+  const [qIn, setQIn] = useState('');
   const [q, setQ] = useState('');
   const [date, setDate] = useState(TODAY);
   const [quick, setQuick] = useState({ free: false, dry: false, near: false, deal: false });
@@ -279,16 +280,22 @@ function Main() {
   const [pickN, setPickN] = useState(0);
   const [full, setFull] = useState(false);
   const mapRef = useRef(null);
+  useEffect(() => { const t = setTimeout(() => setQ(qIn), 250); return () => clearTimeout(t); }, [qIn]);
+  const openId = useCallback((id) => setOpen(id), []);
 
   useEffect(() => { (async () => {
     setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true }));
-    const ph = await loadJSON('ph.native.v1', {}); setPhotos(ph); setReady(true);
+    const ph = await loadJSON('ph.native.v2', {}); setPhotos(ph); setReady(true);
     try { const { status } = await Location.requestForegroundPermissionsAsync(); if (status === 'granted') { const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }); setGeo(['Ma position', pos.coords.latitude, pos.coords.longitude]); } } catch (e) { }
     const evPh = {}; const recs = await fetchEvents(); const have = {}; P.forEach((p) => { have[p.id] = 1; });
     const evs = recs.map((r) => evFromRec(r, evPh)).filter((e) => e && !have[e.id] && (have[e.id] = 1));
     if (evs.length) { setPlaces(P.concat(evs)); setPhotos((o) => ({ ...o, ...evPh })); }
     const todo = Object.keys(PQ).filter((id) => !ph[id]);
-    for (const id of todo) { try { const a = await fetchPhotos(id); if (a) { ph[id] = a; setPhotos((o) => ({ ...o, [id]: a })); saveJSON('ph.native.v1', ph); } } catch (e) { } }
+    for (let i = 0; i < todo.length; i += 6) {
+      const batch = todo.slice(i, i + 6), got = {};
+      await Promise.all(batch.map(async (id) => { try { const a = await fetchPhotos(id); if (a) got[id] = a; } catch (e) { } }));
+      if (Object.keys(got).length) { Object.assign(ph, got); setPhotos((o) => ({ ...o, ...got })); saveJSON('ph.native.v2', ph); }
+    }
   })(); }, []);
 
   const st = { geo, where, date, q, quick, fam, prefs, places };
@@ -305,48 +312,48 @@ function Main() {
   const whenText = key(date) === key(TODAY) ? "Aujourd'hui" : key(date) === key(addDays(TODAY, 1)) ? 'Demain' : fmtDay(date) + (hol ? ' · férié' : firstSun(date) ? ' · 1er dim.' : '');
   const list = L.results;
 
-  const Row = ({ p }) => {
-    const a = photos[p.id], st2 = L.hoursStatus(p), fit = L.ageFit(p);
-    const sub = travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : st2 ? '' : ' · ' + ageText(p));
-    return (
-      <Pressable onPress={() => setOpen(p.id)} style={[s.card, st2 && st2.closed && { opacity: 0.55 }]}>
-        {a && a.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.8 + 6} decelerationRate="fast" contentContainerStyle={{ gap: 6 }}>
-            {a.map((ph, i) => <Pressable key={i} onPress={() => setOpen(p.id)}><Image source={{ uri: ph.t }} style={{ width: a.length === 1 ? width - 32 : width * 0.8, height: 190, borderRadius: 16, backgroundColor: C.soft }} /></Pressable>)}
-          </ScrollView>
-        ) : null}
-        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-          {!(a && a.length) ? <Thumb p={p} photos={photos} /> : null}
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={s.rowTitle} numberOfLines={1}>{p.name}</Text>
-            <Text style={s.rowSub} numberOfLines={1}>{sub}{st2 ? <Text style={{ color: st2.c, fontWeight: '600' }}>{' · ' + st2.t}</Text> : null}</Text>
-            {p.offer ? <Text style={s.deal}>−{p.offer} % avec On sort</Text> : null}
-            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
-              <CatTag p={p} />
-              {L.f1Today(p) ? <Tag bg="#DFF5D3" fg={C.green}>Gratuit ce 1er dimanche</Tag> : null}
-              {p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}
-              {!fit.all ? <Tag>{'Pas pour ' + fit.miss.map((x) => x || 'bébé').join(', ') + (fit.miss.some((x) => x > 0) ? ' ans' : '')}</Tag> : null}
-            </View>
-          </View>
-          <Text style={s.price}>{L.priceLabel(p)}</Text>
-        </View>
-      </Pressable>
-    );
-  };
+  const rowProps = (p) => ({ p, photos: photos[p.id], width, onOpen: openId, sub: travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : ''), st2: L.hoursStatus(p), fit: L.ageFit(p), price: L.priceLabel(p), f1: L.f1Today(p) });
 
   /* ----- Explorer ----- */
+  const header = (
+    <View style={{ gap: 14, paddingBottom: 4 }}>
+      <View style={s.search}>
+        <TextInput value={qIn} onChangeText={setQIn} placeholder="On sort où ?" placeholderTextColor={C.ink} style={s.searchIn} returnKeyType="search" autoCorrect={false} />
+        <Pressable style={s.go} onPress={() => { setPickN(0); setSheet('pick'); }}><Text style={s.goT}>On sort ?</Text></Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        <Pressable style={[s.spill, hol && { backgroundColor: '#FFE1D6' }]} onPress={() => setSheet('date')}><Text style={[s.spillT, hol && { color: C.accentInk }]}>{whenText}</Text></Pressable>
+        <Pressable style={[s.spill, !fam && { backgroundColor: C.ink }]} onPress={() => setSheet('fam')}><Text style={[s.spillT, !fam && { color: C.paper }]}>{famText(fam)}</Text></Pressable>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {QUICK.map((b) => <Chip key={b[0]} label={b[1]} on={quick[b[0]]} onPress={() => setQuick({ ...quick, [b[0]]: !quick[b[0]] })} />)}
+      </ScrollView>
+      <View>
+        <Text style={s.headline}>{(me.name ? me.name + ', ' : '') + list.length + ' sortie' + (list.length > 1 ? 's' : '') + ' pour vous'}</Text>
+        <Text style={s.label}>{fmtDay(date) + (hol ? ' · ' + hol + ', jour férié' : '') + (vac ? ' · ' + vac : '') + (firstSun(date) ? ' · 1er dimanche : musées gratuits' : '') + ' · depuis ' + L.here[0]}</Text>
+      </View>
+      {!fam ? <Pressable style={s.nudge} onPress={() => setSheet('fam')}><Text style={{ fontWeight: '700', fontSize: 15 }}>Ajoute l’âge de tes enfants</Text><Text style={{ fontSize: 13, color: '#4A3A00' }}>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</Text></Pressable> : null}
+    </View>
+  );
+  const empty = (
+    <View style={{ alignItems: 'center', padding: 24, gap: 10 }}>
+      <Text style={s.rowSub}>Rien ne correspond ce jour-là.</Text>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {QUICK.filter((b) => quick[b[0]]).map((b) => <Chip key={b[0]} label={'Retirer « ' + b[1] + ' »'} onPress={() => setQuick({ ...quick, [b[0]]: false })} />)}
+        <Chip label="Changer de jour" onPress={() => setSheet('date')} />
+      </View>
+    </View>
+  );
+  const pins = list.slice(0, 50);
   const explore = (
     <View style={s.fill}>
       <View style={{ height: full ? height * 0.78 : height * 0.4 }}>
         <MapView ref={mapRef} style={StyleSheet.absoluteFill} initialRegion={{ latitude: L.here[1], longitude: L.here[2], latitudeDelta: 0.06, longitudeDelta: 0.06 }}
-          showsUserLocation={!!geo} showsCompass rotateEnabled pitchEnabled showsPointsOfInterest={false}>
-          {!geo ? <Marker coordinate={{ latitude: L.here[1], longitude: L.here[2] }} anchor={{ x: 0.5, y: 0.5 }}><View style={s.me} /></Marker> : null}
-          {list.slice(0, 80).map((p) => (
-            <Marker key={p.id} coordinate={{ latitude: p.lat, longitude: p.lng }} onPress={() => setOpen(p.id)} tracksViewChanges={false}>
-              <View style={{ alignItems: 'center' }}>
-                <View style={s.pinAv}><Thumb p={p} photos={photos} size={34} radius={17} /></View>
-                <View style={[s.pinPr, p.offer && { backgroundColor: C.accent }]}><Text style={[s.pinPrT, p.offer && { color: C.ink }]}>{L.shortPrice(p)}</Text></View>
-              </View>
+          showsUserLocation={!!geo} showsCompass rotateEnabled pitchEnabled showsPointsOfInterest={false} moveOnMarkerPress={false}>
+          {!geo ? <Marker coordinate={{ latitude: L.here[1], longitude: L.here[2] }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}><View style={s.me} /></Marker> : null}
+          {pins.map((p) => (
+            <Marker key={p.id} coordinate={{ latitude: p.lat, longitude: p.lng }} onPress={() => setOpen(p.id)} tracksViewChanges={false} anchor={{ x: 0.5, y: 1 }}>
+              <View style={[s.pinPr2, { backgroundColor: p.offer ? C.accent : ((TINT[p.cat] || ['#0B0B0B'])[1]) }]}><Text style={[s.pinPrT, p.offer && { color: C.ink }]}>{L.shortPrice(p)}</Text></View>
             </Marker>
           ))}
         </MapView>
@@ -358,34 +365,11 @@ function Main() {
       </View>
       <View style={s.sheet}>
         <Pressable onPress={() => setFull(!full)} style={{ alignItems: 'center', paddingVertical: 8 }} accessibilityLabel={full ? 'Afficher la liste' : 'Afficher la carte en grand'}><View style={s.grab} /></Pressable>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 30, gap: 14 }} keyboardShouldPersistTaps="handled">
-          <View style={s.search}>
-            <TextInput value={q} onChangeText={setQ} placeholder="On sort où ?" placeholderTextColor={C.ink} style={s.searchIn} returnKeyType="search" />
-            <Pressable style={s.go} onPress={() => { setPickN(0); setSheet('pick'); }}><Text style={s.goT}>On sort ?</Text></Pressable>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            <Pressable style={[s.spill, hol && { backgroundColor: '#FFE1D6' }]} onPress={() => setSheet('date')}><Text style={[s.spillT, hol && { color: C.accentInk }]}>📅  {whenText}</Text></Pressable>
-            <Pressable style={[s.spill, !fam && { backgroundColor: C.ink }]} onPress={() => setSheet('fam')}><Text style={[s.spillT, !fam && { color: C.paper }]}>{famText(fam)}</Text></Pressable>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {QUICK.map((b) => <Chip key={b[0]} label={b[1]} on={quick[b[0]]} onPress={() => setQuick({ ...quick, [b[0]]: !quick[b[0]] })} />)}
-          </ScrollView>
-          <View>
-            <Text style={s.headline}>{(me.name ? me.name + ', ' : '') + list.length + ' sortie' + (list.length > 1 ? 's' : '') + ' pour vous'}</Text>
-            <Text style={s.label}>{fmtDay(date) + (hol ? ' · ' + hol + ', jour férié' : '') + (vac ? ' · ' + vac : '') + (firstSun(date) ? ' · 1er dimanche : musées gratuits' : '') + ' · depuis ' + L.here[0]}</Text>
-          </View>
-          {!fam ? <Pressable style={s.nudge} onPress={() => setSheet('fam')}><Text style={{ fontWeight: '700', fontSize: 15 }}>Ajoute l’âge de tes enfants</Text><Text style={{ fontSize: 13, color: '#4A3A00' }}>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</Text></Pressable> : null}
-          {list.length ? list.map((p) => <Row key={p.id} p={p} />) : (
-            <View style={{ alignItems: 'center', padding: 24, gap: 10 }}>
-              <Text style={s.rowSub}>Rien ne correspond ce jour-là.</Text>
-              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {QUICK.filter((b) => quick[b[0]]).map((b) => <Chip key={b[0]} label={'Retirer « ' + b[1] + ' »'} onPress={() => setQuick({ ...quick, [b[0]]: false })} />)}
-                <Chip label="Changer de jour" onPress={() => setSheet('date')} />
-              </View>
-            </View>
-          )}
-          <Text style={s.banner}>Version de test. Photos : Wikimedia Commons et Que faire à Paris (auteur dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu.</Text>
-        </ScrollView>
+        <FlatList data={list} keyExtractor={(p) => p.id} renderItem={({ item }) => <Row {...rowProps(item)} />}
+          ListHeaderComponent={header} ListEmptyComponent={empty}
+          ListFooterComponent={<Text style={[s.banner, { marginTop: 14 }]}>Version de test. Photos : Wikimedia Commons et Que faire à Paris (auteur dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu.</Text>}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
+          initialNumToRender={5} maxToRenderPerBatch={5} windowSize={7} removeClippedSubviews />
       </View>
     </View>
   );
@@ -396,35 +380,50 @@ function Main() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Text style={s.big}>Mes sorties</Text>
       <Text style={s.label}>Favoris</Text>
-      {favList.length ? favList.map((p) => <Row key={p.id} p={p} />) : <Text style={s.rowSub}>Touche le cœur sur une sortie pour la garder ici.</Text>}
+      {favList.length ? favList.map((p) => <Row key={p.id} {...rowProps(p)} />) : <Text style={s.rowSub}>Touche le cœur sur une sortie pour la garder ici.</Text>}
     </ScrollView>
   );
 
   /* ----- Compte ----- */
+  const savePrefs = (n) => { setPrefs(n); saveJSON('prefs', n); };
+  const wipe = () => Alert.alert('Effacer mes données ?', 'Prénom, famille, favoris et préférences seront supprimés de ce téléphone.', [
+    { text: 'Annuler', style: 'cancel' },
+    { text: 'Effacer', style: 'destructive', onPress: async () => { try { const ks = (await AsyncStorage.getAllKeys()).filter((k) => k.indexOf('onsort.') === 0 && k.indexOf('onsort.ph') !== 0); await AsyncStorage.multiRemove(ks); } catch (e) { } setFam(null); setFavs([]); setMe({ name: '' }); setPrefs({ maxMin: null, notif: true }); } },
+  ]);
   const account = (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }} keyboardShouldPersistTaps="handled">
-      <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center', marginBottom: 8 }}>
-        <View style={s.avatar}><Text style={{ fontSize: 30, fontWeight: '800' }}>{(me.name || '?').charAt(0).toUpperCase()}</Text></View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={s.label}>Prénom</Text>
-          <TextInput value={me.name} onChangeText={(t) => { const n = { ...me, name: t.slice(0, 30) }; setMe(n); saveJSON('me', n); }} placeholder="Ton prénom" style={s.field} autoComplete="given-name" />
-          <Text style={s.rowSub}>Profil enregistré sur ce téléphone</Text>
+    <ScrollView style={{ backgroundColor: '#F4F4F1' }} contentContainerStyle={{ padding: 16, gap: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <Text style={s.big}>Compte</Text>
+      <View style={s.profCard}>
+        <View style={s.avatar}><Text style={{ fontSize: 30, fontWeight: '900' }}>{(me.name || '?').charAt(0).toUpperCase()}</Text></View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <TextInput value={me.name} onChangeText={(t) => { const n = { ...me, name: t.slice(0, 30) }; setMe(n); saveJSON('me', n); }} placeholder="Ton prénom" placeholderTextColor={C.muted} style={s.nameIn} autoComplete="given-name" />
+          <Text style={s.rowSub}>{famText(fam)}</Text>
         </View>
       </View>
-      <Text style={s.label}>Ma famille</Text>
-      <Pressable style={s.setrow} onPress={() => setSheet('fam')}><Text style={s.setT}>Qui vient ?</Text><Text style={s.setV}>{famText(fam)}</Text></Pressable>
-      <Pressable style={s.setrow} onPress={() => setSheet('where')}><Text style={s.setT}>Point de départ</Text><Text style={s.setV}>{L.here[0]}</Text></Pressable>
-      <Text style={[s.label, { marginTop: 10 }]}>Préférences</Text>
-      <Text style={s.setT}>Distance maximum</Text>
-      <View style={{ flexDirection: 'row', gap: 8 }}>{[[null, 'Pas de limite'], [20, '20 min'], [45, '45 min']].map((m) => <Chip key={String(m[0])} label={m[1]} on={prefs.maxMin === m[0]} onPress={() => { const n = { ...prefs, maxMin: m[0] }; setPrefs(n); saveJSON('prefs', n); }} />)}</View>
-      <Pressable style={s.setrow} onPress={() => { const n = { ...prefs, notif: !prefs.notif }; setPrefs(n); saveJSON('prefs', n); }}><Text style={s.setT}>Idées du samedi soir</Text><Text style={[s.setV, prefs.notif && { color: C.green }]}>{prefs.notif ? 'Oui' : 'Non'}</Text></Pressable>
-      <Text style={[s.label, { marginTop: 10 }]}>Compte</Text>
-      <View style={[s.setrow, { opacity: 0.7 }]}><Text style={s.setT}>Se connecter avec Apple</Text><Text style={s.setV}>Bientôt</Text></View>
-      <Text style={[s.label, { marginTop: 10 }]}>Mes données</Text>
-      <View style={s.setrow}><Text style={s.setT}>Favoris</Text><Text style={s.setV}>{favs.length}</Text></View>
-      <Pressable style={s.setrow} onPress={async () => { try { const ks = (await AsyncStorage.getAllKeys()).filter((k) => k.indexOf('onsort.') === 0); await AsyncStorage.multiRemove(ks); } catch (e) { } setFam(null); setFavs([]); setMe({ name: '' }); setPrefs({ maxMin: null, notif: true }); }}><Text style={[s.setT, { color: C.accentInk }]}>Effacer mes données</Text></Pressable>
-      <Text style={[s.label, { marginTop: 10 }]}>À propos</Text>
-      <Text style={s.rowSub}>On sort · version de test. Agenda : Que faire à Paris (Ville de Paris). Photos : Wikimedia Commons. Carte : Apple Plans.</Text>
+      <View style={s.stats}>
+        <Stat n={favs.length} l="Favoris" /><View style={s.statSep} /><Stat n={fam ? fam.kids.length : 0} l="Enfants" /><View style={s.statSep} /><Stat n={L.results.length} l="Sorties dispo" />
+      </View>
+      <Group title="Ma famille">
+        <SetRow label="Qui vient ?" value={fam ? famText(fam) : 'À compléter'} onPress={() => setSheet('fam')} />
+        <SetRow label="Point de départ" value={L.here[0]} onPress={() => setSheet('where')} />
+        <SetRow label="Sieste l’après-midi" sub="Masque ce qui tombe entre 13h et 15h30" right={<Switch value={!!(fam && fam.nap)} onValueChange={(v) => setFamS({ ...(fam || { ad: 2, kids: [] }), nap: v })} trackColor={{ true: C.accent }} />} last />
+      </Group>
+      <Group title="Préférences">
+        <View style={s.gRow}><Text style={s.setT}>Distance maximum</Text></View>
+        <View style={[s.seg, { marginHorizontal: 14, marginBottom: 12 }]}>
+          {[[null, 'Pas de limite'], [20, '20 min'], [45, '45 min']].map((m) => <Pressable key={String(m[0])} style={[s.segB, prefs.maxMin === m[0] && s.segOn]} onPress={() => savePrefs({ ...prefs, maxMin: m[0] })}><Text style={[s.segT, prefs.maxMin === m[0] && { fontWeight: '700' }]}>{m[1]}</Text></Pressable>)}
+        </View>
+        <SetRow label="Idées du samedi soir" sub="Les bons plans du dimanche, la veille" right={<Switch value={!!prefs.notif} onValueChange={(v) => savePrefs({ ...prefs, notif: v })} trackColor={{ true: C.accent }} />} last />
+      </Group>
+      <Group title="Compte">
+        <SetRow label="Se connecter avec Apple" sub="Favoris et famille sur tous tes appareils" value="Bientôt" dim />
+        <SetRow label="Inviter un proche" onPress={() => Share.share({ message: 'Je trouve nos sorties en famille avec On sort : https://devbl770.github.io/on-sort/' })} last />
+      </Group>
+      <Group title="Aide">
+        <SetRow label="Proposer une sortie" onPress={() => Share.share({ message: 'Sortie à ajouter dans On sort : ' })} />
+        <SetRow label="Effacer mes données" danger onPress={wipe} last />
+      </Group>
+      <Text style={[s.rowSub, { textAlign: 'center', lineHeight: 18 }]}>On sort · version de test{'\n'}Agenda : Que faire à Paris (Ville de Paris) · Photos : Wikimedia Commons · Carte : Apple Plans{'\n'}Tarifs et horaires indicatifs</Text>
     </ScrollView>
   );
 
@@ -523,6 +522,44 @@ function Main() {
     </SafeAreaView>
   );
 }
+const Row = memo(function Row({ p, photos: a, width, onOpen, sub, st2, fit, price, f1 }) {
+  return (
+    <Pressable onPress={() => onOpen(p.id)} style={[s.card, st2 && st2.closed && { opacity: 0.55 }]}>
+      {a && a.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.8 + 6} decelerationRate="fast" contentContainerStyle={{ gap: 6 }}>
+          {a.map((ph, i) => <Pressable key={i} onPress={() => onOpen(p.id)}><Image source={{ uri: ph.t }} resizeMode="cover" style={{ width: a.length === 1 ? width - 32 : width * 0.8, height: 190, borderRadius: 16, backgroundColor: C.soft }} /></Pressable>)}
+        </ScrollView>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+        {!(a && a.length) ? <View style={{ width: 58, height: 58, borderRadius: 16, overflow: 'hidden', backgroundColor: (ILL[p.id] || ['#FFE1EC'])[0] }}><Ill id={p.id} size={58} /></View> : null}
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={s.rowTitle} numberOfLines={1}>{p.name}</Text>
+          <Text style={s.rowSub} numberOfLines={1}>{sub}{st2 ? <Text style={{ color: st2.c, fontWeight: '600' }}>{' · ' + st2.t}</Text> : (!p.evt ? ' · ' + ageText(p) : '')}</Text>
+          {p.offer ? <Text style={s.deal}>−{p.offer} % avec On sort</Text> : null}
+          <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+            <CatTag p={p} />
+            {f1 ? <Tag bg="#DFF5D3" fg={C.green}>Gratuit ce 1er dimanche</Tag> : null}
+            {p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}
+            {!fit.all ? <Tag>{'Pas pour ' + fit.miss.map((x) => x || 'bébé').join(', ') + (fit.miss.some((x) => x > 0) ? ' ans' : '')}</Tag> : null}
+          </View>
+        </View>
+        <Text style={s.price}>{price}</Text>
+      </View>
+    </Pressable>
+  );
+});
+function Stat({ n, l }) { return <View style={{ flex: 1, alignItems: 'center', gap: 2 }}><Text style={{ fontSize: 22, fontWeight: '900' }}>{n}</Text><Text style={s.rowSub}>{l}</Text></View>; }
+function Group({ title, children }) { return <View style={{ gap: 6 }}><Text style={[s.label, { marginLeft: 14, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 12 }]}>{title}</Text><View style={s.group}>{children}</View></View>; }
+function SetRow({ label, sub, value, onPress, right, last, danger, dim }) {
+  const body = (
+    <View style={[s.gRow, !last && s.gLine, dim && { opacity: 0.55 }]}>
+      <View style={{ flex: 1, gap: 2 }}><Text style={[s.setT, danger && { color: C.accentInk }]}>{label}</Text>{sub ? <Text style={s.rowSub}>{sub}</Text> : null}</View>
+      {right || (value ? <Text style={s.setV} numberOfLines={1}>{value}</Text> : null)}
+      {onPress && !right ? <Text style={{ fontSize: 20, color: '#B5B5B0', marginLeft: 6 }}>›</Text> : null}
+    </View>
+  );
+  return onPress ? <Pressable onPress={onPress}>{body}</Pressable> : body;
+}
 function Fact({ k, v, vc, last }) { return <View style={[s.fact, last && { borderBottomWidth: 0 }]}><Text style={{ color: C.muted, flex: 1 }}>{k}</Text><Text style={{ fontWeight: '600', color: vc || C.ink, textAlign: 'right', flex: 1 }}>{v}</Text></View>; }
 function Gallery({ photos, width }) {
   const [i, setI] = useState(0);
@@ -597,5 +634,17 @@ const s = StyleSheet.create({
   ovtop: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8 },
   facts: { borderWidth: 1, borderColor: C.line, borderRadius: 14 },
   fact: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 11, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: C.line },
+  pinPr2: { borderRadius: 9, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 2, borderColor: '#fff', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  profCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.paper, borderRadius: 18, padding: 14 },
+  nameIn: { fontSize: 20, fontWeight: '800', color: C.ink, paddingVertical: 4 },
+  stats: { flexDirection: 'row', backgroundColor: C.paper, borderRadius: 18, paddingVertical: 14 },
+  statSep: { width: 1, backgroundColor: C.line },
+  group: { backgroundColor: C.paper, borderRadius: 16, overflow: 'hidden' },
+  gRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13, minHeight: 50 },
+  gLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#D9D9D4' },
+  seg: { flexDirection: 'row', backgroundColor: C.soft, borderRadius: 10, padding: 3 },
+  segB: { flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  segOn: { backgroundColor: C.paper, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
+  segT: { fontSize: 13, color: C.ink },
   galBadge: { position: 'absolute', bottom: 12, backgroundColor: C.paper, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
 });
