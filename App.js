@@ -183,8 +183,9 @@ function makeLogic(st) {
     if (st.quick.deal && !p.offer) return false;
     return true;
   };
-  const results = st.places.filter(matches).sort((a, b) => ((hoursStatus(a) || {}).closed ? 1 : 0) - ((hoursStatus(b) || {}).closed ? 1 : 0) || (ageFit(a).all ? 0 : 1) - (ageFit(b).all ? 0 : 1) || km(a) - km(b));
-  const picks = results.filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(km(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
+  const wet = (p) => (st.rain && p.io === 'Plein air' ? 1 : 0);
+  const results = st.places.filter(matches).sort((a, b) => ((hoursStatus(a) || {}).closed ? 1 : 0) - ((hoursStatus(b) || {}).closed ? 1 : 0) || wet(a) - wet(b) || (ageFit(a).all ? 0 : 1) - (ageFit(b).all ? 0 : 1) || km(a) - km(b));
+  const picks = results.filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(km(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) + (st.rain ? (p.io === 'Plein air' ? -14 : 10) : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
   return { here, km, f1Today, eff, famTotal, priceLabel, shortPrice, ageFit, hoursStatus, results, picks };
 }
 function famText(fam) {
@@ -237,6 +238,28 @@ async function fetchEvents() {
   for (const t of tries) { try { const r = await fetch(base + t); if (!r.ok) continue; const j = await r.json(); if (j.results && j.results.length) return j.results; } catch (e) { } }
   return [];
 }
+/* Météo : Open-Meteo (CC BY 4.0) — offre gratuite non commerciale, à passer en offre payante au lancement */
+async function fetchWeather(lat, lng) {
+  const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lng.toFixed(3) + '&hourly=precipitation_probability,temperature_2m&timezone=Europe%2FParis&forecast_days=7';
+  const j = await (await fetch(u)).json();
+  return j && j.hourly && j.hourly.time ? j.hourly : null;
+}
+function dayWeather(h, d) {
+  if (!h) return null; const pre = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  let rain = -1, ts = 0, n = 0;
+  h.time.forEach((t, i) => { if (t.indexOf(pre) === 0) { const hr = +t.slice(11, 13); if (hr >= 10 && hr <= 18) { rain = Math.max(rain, h.precipitation_probability[i] || 0); ts += h.temperature_2m[i]; n++; } } });
+  return n ? { rain, temp: Math.round(ts / n) } : null;
+}
+/* Toilettes publiques : jeu « sanisettesparis » (Ville de Paris, ODbL) */
+async function fetchToilets(lat, lng) {
+  const w = encodeURIComponent("within_distance(geo_point_2d, geom'POINT(" + lng + ' ' + lat + ")', 700m)");
+  const r = await fetch('https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/sanisettesparis/records?limit=20&where=' + w);
+  if (!r.ok) return [];
+  const j = await r.json();
+  return (j.results || []).map((x) => { const g = x.geo_point_2d || {}; return { lat: +g.lat, lng: +g.lon, type: x.type || 'Toilettes', adr: x.adresse || '', h: x.horaire || '', pmr: String(x.acces_pmr || '').toLowerCase() === 'oui', ok: !/hors/i.test(x.statut || '') }; })
+    .filter((x) => x.lat && x.ok).map((x) => ({ ...x, d: dist(lat, lng, x.lat, x.lng) })).sort((a, b) => a.d - b.d);
+}
+const mTxt = (k) => (k < 1 ? Math.round(k * 1000 / 10) * 10 + ' m' : k.toFixed(1).replace('.', ',') + ' km');
 async function loadJSON(k, d) { try { const v = await AsyncStorage.getItem('onsort.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function saveJSON(k, v) { AsyncStorage.setItem('onsort.' + k, JSON.stringify(v)).catch(() => { }); }
 
@@ -288,14 +311,19 @@ function Main() {
   const [sheet, setSheet] = useState(null); // 'date' | 'fam' | 'where' | 'pick'
   const [pickN, setPickN] = useState(0);
   const [full, setFull] = useState(false);
+  const [wx, setWx] = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [book, setBook] = useState(null);
+  const [ticket, setTicket] = useState(null);
   const mapRef = useRef(null);
   useEffect(() => { const t = setTimeout(() => setQ(qIn), 250); return () => clearTimeout(t); }, [qIn]);
   const openId = useCallback((id) => setOpen(id), []);
 
   useEffect(() => { (async () => {
-    setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true }));
+    setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true })); setTickets(await loadJSON('tickets', []));
     const ph = await loadJSON('ph.native.v3', {}); setPhotos(ph); setReady(true);
     try { const { status } = await Location.requestForegroundPermissionsAsync(); if (status === 'granted') { const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }); setGeo(['Ma position', pos.coords.latitude, pos.coords.longitude]); } } catch (e) { }
+    try { const h0 = PLACES[await loadJSON('where', 10)] || PLACES[10]; setWx(await fetchWeather(h0[1], h0[2])); } catch (e) { }
     const evPh = {}; const recs = await fetchEvents(); const have = {}; P.forEach((p) => { have[p.id] = 1; });
     const evs = recs.map((r) => evFromRec(r, evPh)).filter((e) => e && !have[e.id] && (have[e.id] = 1));
     if (evs.length) { setPlaces(P.concat(evs)); setPhotos((o) => ({ ...o, ...evPh })); }
@@ -307,8 +335,9 @@ function Main() {
     }
   })(); }, []);
 
-  const st = { geo, where, date, q, quick, fam, prefs, places };
-  const L = useMemo(() => makeLogic(st), [geo, where, date, q, quick, fam, prefs, places]);
+  const W = dayWeather(wx, date), rain = !!(W && W.rain >= 60);
+  const st = { geo, where, date, q, quick, fam, prefs, places, rain };
+  const L = useMemo(() => makeLogic(st), [geo, where, date, q, quick, fam, prefs, places, rain]);
   const hol = holName(date), vac = vacName(date);
   const sel = open ? places.find((p) => p.id === open) : null;
   const toggleFav = (id) => { const n = favs.indexOf(id) >= 0 ? favs.filter((x) => x !== id) : favs.concat(id); setFavs(n); saveJSON('favs', n); };
@@ -340,7 +369,9 @@ function Main() {
       <View>
         <Text style={s.headline}>{(me.name ? me.name + ', ' : '') + list.length + ' sortie' + (list.length > 1 ? 's' : '') + ' pour vous'}</Text>
         <Text style={s.label}>{fmtDay(date) + (hol ? ' · ' + hol + ', jour férié' : '') + (vac ? ' · ' + vac : '') + (firstSun(date) ? ' · 1er dimanche : musées gratuits' : '') + ' · depuis ' + L.here[0]}</Text>
+        {W ? <Text style={[s.label, { color: rain ? '#1F4FC2' : C.muted }]}>{(W.rain >= 60 ? 'Pluie probable (' + W.rain + ' %)' : W.rain >= 30 ? 'Averses possibles (' + W.rain + ' %)' : 'Temps sec') + ' · ' + W.temp + '°'}</Text> : null}
       </View>
+      {rain ? <View style={s.rainBox}><Text style={{ fontWeight: '700', color: '#1F4FC2' }}>Plan B pluie activé</Text><Text style={{ fontSize: 13, color: '#1F4FC2' }}>Les sorties à l’abri passent en premier.</Text></View> : null}
       {!fam ? <Pressable style={s.nudge} onPress={() => setSheet('fam')}><Text style={{ fontWeight: '700', fontSize: 15 }}>Ajoute l’âge de tes enfants</Text><Text style={{ fontSize: 13, color: '#4A3A00' }}>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</Text></Pressable> : null}
     </View>
   );
@@ -388,6 +419,13 @@ function Main() {
   const mine = (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Text style={s.big}>Mes sorties</Text>
+      {tickets.length ? <Text style={s.label}>Billets</Text> : null}
+      {tickets.slice().reverse().map((tk) => { const p = places.find((x) => x.id === tk.id); return (
+        <Pressable key={tk.code} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]} onPress={() => setTicket(tk)}>
+          {p ? <Thumb p={p} photos={photos} /> : null}
+          <View style={{ flex: 1 }}><Text style={s.rowTitle}>{tk.name}</Text><Text style={s.rowSub}>{fmtDay(new Date(tk.date)) + ' · ' + tk.ad + ' ad. · ' + tk.en + ' enf.'}</Text></View>
+          <Text style={s.price}>{eur(tk.total)}</Text>
+        </Pressable>); })}
       <Text style={s.label}>Favoris</Text>
       {favList.length ? favList.map((p) => <Row key={p.id} {...rowProps(p)} />) : <Text style={s.rowSub}>Touche le cœur sur une sortie pour la garder ici.</Text>}
     </ScrollView>
@@ -432,7 +470,7 @@ function Main() {
         <SetRow label="Proposer une sortie" onPress={() => Share.share({ message: 'Sortie à ajouter dans On sort : ' })} />
         <SetRow label="Effacer mes données" danger onPress={wipe} last />
       </Group>
-      <Text style={[s.rowSub, { textAlign: 'center', lineHeight: 18 }]}>On sort · version de test{'\n'}Agenda : Que faire à Paris (Ville de Paris) · Photos : Wikimedia Commons · Carte : Apple Plans{'\n'}Tarifs et horaires indicatifs</Text>
+      <Text style={[s.rowSub, { textAlign: 'center', lineHeight: 18 }]}>On sort · version de test{'\n'}Agenda : Que faire à Paris (Ville de Paris) · Photos : Wikimedia Commons · Carte : Apple Plans{'\n'}Météo : Open-Meteo (CC BY 4.0) · Toilettes : Ville de Paris{'\n'}Tarifs et horaires indicatifs</Text>
     </ScrollView>
   );
 
@@ -464,11 +502,13 @@ function Main() {
               {!p.evt ? <Fact k="Enfant" v={e.en == null ? 'Voir le site' : e.en === 0 ? 'Gratuit' : eur(e.en)} /> : null}
               <Fact k="À savoir" v={p.note.slice(0, 160)} last />
             </View>
+            <Nearby p={p} places={places} onOpen={(id) => setOpen(id)} />
             {p.url ? <Pressable onPress={() => Linking.openURL(p.url)}><Text style={{ textDecorationLine: 'underline', color: C.muted }}>Voir le programme sur Que faire à Paris</Text></Pressable> : null}
             <Text style={s.banner}>Infos de test, indicatives.</Text>
           </ScrollView>
           <View style={s.foot}>
-            <Pressable style={s.cta} onPress={() => Linking.openURL(Platform.OS === 'ios' ? 'http://maps.apple.com/?daddr=' + p.lat + ',' + p.lng : 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng)}><Text style={s.ctaT}>Y aller</Text></Pressable>
+            {op && e.ad != null && e.en != null && (e.ad > 0 || e.en > 0) ? <Pressable style={[s.cta, { flex: 1.3 }]} onPress={() => setBook({ id: p.id, ad: fam ? fam.ad : 2, en: fam ? fam.kids.filter((k) => !(p.free3 && k < 3)).length : 2 })}><Text style={s.ctaT}>{'Réserver' + (p.offer ? ' · −' + p.offer + ' %' : '')}</Text></Pressable> : null}
+            <Pressable style={op && e.ad != null && e.en != null && (e.ad > 0 || e.en > 0) ? s.ghost : s.cta} onPress={() => Linking.openURL(Platform.OS === 'ios' ? 'http://maps.apple.com/?daddr=' + p.lat + ',' + p.lng : 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng)}><Text style={op && e.ad != null && e.en != null && (e.ad > 0 || e.en > 0) ? { fontWeight: '600', fontSize: 15 } : s.ctaT}>Y aller</Text></Pressable>
           </View>
         </SafeAreaView>
       </Modal>
@@ -496,6 +536,39 @@ function Main() {
         ))}
       </SafeAreaView>
       {fiche}
+      {book ? (() => {
+        const p = places.find((x) => x.id === book.id); const sub = book.ad * p.ad + book.en * p.en, off = p.offer ? Math.round(sub * p.offer) / 100 : 0, tot = sub - off;
+        const confirm = () => { const tk = { id: p.id, name: p.name, date: date.getTime(), ad: book.ad, en: book.en, total: tot, saved: off, code: Math.random().toString(36).slice(2, 10) }; const n = tickets.concat(tk); setTickets(n); saveJSON('tickets', n); setBook(null); setOpen(null); setTicket(tk); };
+        return (
+          <Sheet visible onClose={() => setBook(null)} title="Réserver" footer={<Pressable style={[s.cta, !(book.ad + book.en) && { opacity: 0.35 }]} disabled={!(book.ad + book.en)} onPress={confirm}><Text style={s.ctaT}>{'Confirmer · ' + eur(tot)}</Text></Pressable>}>
+            <Text style={s.label}>{p.name + ' · ' + fmtDay(date)}</Text>
+            {[['ad', 'Adultes', p.ad], ['en', 'Enfants', p.en]].map((r) => (
+              <View key={r[0]} style={s.setrow}><Text style={s.setT}>{r[1] + ' · ' + (r[2] ? eur(r[2]) : 'gratuit')}</Text><View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}><Pressable style={s.step} onPress={() => setBook({ ...book, [r[0]]: Math.max(0, book[r[0]] - 1) })}><Text style={{ fontSize: 20 }}>−</Text></Pressable><Text style={{ fontWeight: '700', fontSize: 17 }}>{book[r[0]]}</Text><Pressable style={s.step} onPress={() => setBook({ ...book, [r[0]]: Math.min(9, book[r[0]] + 1) })}><Text style={{ fontSize: 20 }}>+</Text></Pressable></View></View>
+            ))}
+            <View style={s.facts}><Fact k="Sous-total" v={eur(sub)} />{p.offer ? <Fact k={'Offre On sort −' + p.offer + ' %'} v={'−' + eur(off)} vc={C.accentInk} /> : null}<Fact k="Total" v={eur(tot)} last /></View>
+            <Text style={s.banner}>Démonstration : aucun paiement, le billet créé est fictif.</Text>
+          </Sheet>
+        );
+      })() : null}
+      {ticket ? (
+        <Modal visible animationType="slide" onRequestClose={() => setTicket(null)}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: C.accent }}>
+            <View style={{ flex: 1, padding: 20, gap: 20 }}>
+              <View style={{ alignItems: 'flex-end' }}><Pressable style={[s.round, { backgroundColor: C.ink }]} onPress={() => setTicket(null)} accessibilityLabel="Fermer"><Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>✕</Text></Pressable></View>
+              <Text style={{ fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 52 }}>{'C’est\nréservé.'}</Text>
+              <View style={{ backgroundColor: C.paper, borderRadius: 20, padding: 18, gap: 14 }}>
+                <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}><QR code={ticket.code} size={105} /><View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 18, fontWeight: '700' }}>{ticket.name}</Text><Text style={s.rowSub}>Billet de démonstration</Text></View></View>
+                <View style={{ height: 1, backgroundColor: C.line }} />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 }}>
+                  {[['Quand', fmtDay(new Date(ticket.date))], ['Qui', ticket.ad + ' ad. · ' + ticket.en + ' enf.'], ['Total', eur(ticket.total)], ['Économisé', eur(ticket.saved)]].map((x) => <View key={x[0]} style={{ width: '50%' }}><Text style={s.rowSub}>{x[0]}</Text><Text style={{ fontWeight: '700', fontSize: 15 }}>{x[1]}</Text></View>)}
+                </View>
+              </View>
+              <View style={{ flex: 1 }} />
+              <Pressable style={s.cta} onPress={() => Share.share({ message: 'C’est réservé : ' + ticket.name + ', ' + fmtDay(new Date(ticket.date)) + '. Organisé avec On sort.' })}><Text style={s.ctaT}>Envoyer à la famille</Text></Pressable>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      ) : null}
       <Sheet visible={sheet === 'date'} onClose={() => setSheet(null)} title="Quand ?">
         {dopts.map((o) => { const hn = holName(o[1]) || vacName(o[1]); return <Pressable key={key(o[1])} style={s.setrow} onPress={() => { setDate(o[1]); setSheet(null); }}><Text style={s.setT}>{o[0]}{key(o[1]) === key(date) ? '  · choisi' : ''}</Text>{hn ? <Text style={[s.setV, { color: C.accentInk }]}>{hn}</Text> : null}</Pressable>; })}
       </Sheet>
@@ -557,6 +630,31 @@ const Row = memo(function Row({ p, photos: a, width, onOpen, sub, st2, fit, pric
     </Pressable>
   );
 });
+function Nearby({ p, places, onOpen }) {
+  const [wc, setWc] = useState(null);
+  useEffect(() => { let on = true; if (p.lat > 48.81 && p.lat < 48.91 && p.lng > 2.22 && p.lng < 2.47) fetchToilets(p.lat, p.lng).then((r) => on && setWc(r[0] || false)).catch(() => on && setWc(false)); else setWc(false); return () => { on = false; }; }, [p.id]);
+  const park = places.filter((x) => x.cat === 'Parc' && x.id !== p.id).map((x) => ({ x, d: dist(p.lat, p.lng, x.lat, x.lng) })).sort((a, b) => a.d - b.d)[0];
+  const showPark = park && park.d < 1.5 && p.cat !== 'Parc';
+  if (!showPark && !wc) return wc === null ? <Text style={s.rowSub}>Recherche des toilettes à proximité…</Text> : null;
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={s.label}>À côté</Text>
+      <View style={s.facts}>
+        {wc ? <Pressable onPress={() => Linking.openURL('http://maps.apple.com/?daddr=' + wc.lat + ',' + wc.lng + '&dirflg=w')}><Fact k={'Toilettes publiques · ' + mTxt(wc.d)} v={[wc.h, wc.pmr ? 'accès PMR' : ''].filter(Boolean).join(' · ') || 'Voir sur la carte'} last={!showPark} /></Pressable> : null}
+        {showPark ? <Pressable onPress={() => onOpen(park.x.id)}><Fact k={'Pique-nique · ' + mTxt(park.d)} v={park.x.name} last /></Pressable> : null}
+      </View>
+      {wc ? <Text style={{ fontSize: 11, color: C.muted }}>Toilettes : données Ville de Paris (sanisettes en service)</Text> : null}
+    </View>
+  );
+}
+function QR({ code, size }) {
+  const n = 21, c = size / n; let seed = 0; for (const ch of code) seed = (seed * 31 + ch.charCodeAt(0)) % 233280;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const fin = (r, k, r0, c0) => { const y = r - r0, x = k - c0; if (y < 0 || x < 0 || y > 6 || x > 6) return null; return y === 0 || y === 6 || x === 0 || x === 6 || (y > 1 && y < 5 && x > 1 && x < 5); };
+  const cells = [];
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) { let f = fin(r, k, 0, 0); if (f === null) f = fin(r, k, 0, 14); if (f === null) f = fin(r, k, 14, 0); const z = (r < 8 && k < 8) || (r < 8 && k > 12) || (r > 12 && k < 8); if (f !== null ? f : !z && rnd() > 0.5) cells.push(<View key={r * n + k} style={{ position: 'absolute', left: k * c, top: r * c, width: c, height: c, backgroundColor: C.ink }} />); }
+  return <View style={{ width: size, height: size, backgroundColor: '#fff' }}>{cells}</View>;
+}
 function Stat({ n, l }) { return <View style={{ flex: 1, alignItems: 'center', gap: 2 }}><Text style={{ fontSize: 22, fontWeight: '900' }}>{n}</Text><Text style={s.rowSub}>{l}</Text></View>; }
 function Group({ title, children }) { return <View style={{ gap: 6 }}><Text style={[s.label, { marginLeft: 14, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 12 }]}>{title}</Text><View style={s.group}>{children}</View></View>; }
 function SetRow({ label, sub, value, onPress, right, last, danger, dim }) {
@@ -655,5 +753,6 @@ const s = StyleSheet.create({
   segB: { flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   segOn: { backgroundColor: C.paper, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
   segT: { fontSize: 13, color: C.ink },
+  rainBox: { padding: 12, borderRadius: 14, backgroundColor: '#DCE8FF', gap: 2 },
   galBadge: { position: 'absolute', bottom: 12, backgroundColor: C.paper, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
 });
