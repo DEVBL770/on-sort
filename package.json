@@ -1,0 +1,8 @@
+{
+  "name": "on-sort",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": { "start": "expo start", "ios": "expo start --ios" },
+  "dependencies": { "expo": "*" }
+}

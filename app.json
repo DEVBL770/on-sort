@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "On sort",
+    "slug": "on-sort",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": { "image": "./assets/icon.png", "resizeMode": "contain", "backgroundColor": "#FF5B2E" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.onsort.app",
+      "infoPlist": { "NSLocationWhenInUseUsageDescription": "On sort utilise ta position pour te proposer les sorties les plus proches." }
+    },
+    "plugins": [["expo-location", { "locationWhenInUsePermission": "On sort utilise ta position pour te proposer les sorties les plus proches." }]]
+  }
+}
