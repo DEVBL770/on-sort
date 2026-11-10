@@ -373,56 +373,29 @@ function toast(t){var el=document.createElement("div");el.className="toast";el.t
 function ill(id,extra){var d=ILL[id]||["#F2F2F0",""];return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
 /* ---------- Photos Wikimedia Commons (chargées par le navigateur, crédit obligatoire) ---------- */
 var PQ={orsay:"Musée d'Orsay nef",carnavalet:"Musée Carnavalet",mam:"Musée d'Art Moderne de Paris",chasse:"Musée de la Chasse et de la Nature",acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
-var PH=load("ph.v2",{});
+var PH=load("ph.v3",{});
 function ph1(id){var a=PH[id];return a&&a.length?a[0]:null;}
 function stripHtml(h){try{return (new DOMParser().parseFromString(h||"","text/html").body.textContent||"").trim().replace(/\s+/g," ");}catch(e){return "";}}
+var PQ2={museeherbe:["Musée en Herbe","Musée en herbe Paris"],ferme:["Ferme de Paris","Ferme Georges-Ville"],daumesnil:["Lac Daumesnil barques","Lac Daumesnil"],aquarium:["Cinéaqua","Aquarium du Trocadéro"],citeenfants:["Cité des enfants","Cité des sciences Paris"],miniature:["France Miniature"],cergy:["Base de loisirs de Cergy","Étangs de Cergy"],grandpalais:["Grand Palais Paris"],philharmonie:["Philharmonie de Paris Jean Nouvel"],armee:["Musée de l'Armée"],belleville:["Parc de Belleville Paris"],floral:["Parc floral de Vincennes"],chasse:["Musée de la Chasse et de la Nature Paris"],carnavalet:["Carnavalet"],mam:["Musée d'Art moderne de la ville de Paris","Palais de Tokyo"],orsay:["Musée d'Orsay"],zoo:["Zoo de Vincennes"],evolution:["Grande galerie de l'évolution Paris"],artsmetiers:["Arts et Métiers musée Paris"],saintcloud:["Parc de Saint-Cloud"],sceaux:["Château de Sceaux"],villette:["La Villette Paris parc"],bercy:["Jardin de Bercy"],montsouris:["Parc Montsouris Paris"],citroen:["Parc André Citroën Paris"]};
+var BADPH=/map|plan|carte|logo|blason|panneau|affiche|gravure|dessin|lithograph|engraving|\b1[6-8]\d\d\b|\b19[0-4]\d\b/i;
+function wmSearch(q){
+  var u="https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch="+encodeURIComponent(q+" filetype:bitmap")+"&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=900&iiextmetadatafilter=Artist|LicenseShortName";
+  return fetch(u).then(function(r){return r.json();}).then(function(j){var pages=j&&j.query&&j.query.pages?Object.keys(j.query.pages).map(function(k){return j.query.pages[k];}):[];return pages.sort(function(a,b){return (a.index||0)-(b.index||0);});});
+}
+function wmPick(pages,out,seen,strict){
+  for(var i=0;i<pages.length&&out.length<5;i++){var pg=pages[i],ii=pg.imageinfo&&pg.imageinfo[0];if(!ii||seen[pg.title])continue;
+    var okMime=strict?ii.mime==="image/jpeg":/image\/(jpeg|png|webp)/.test(ii.mime);
+    if(!okMime||ii.width<(strict?1000:700)||(strict&&ii.width<ii.height*0.9)||BADPH.test(pg.title))continue;
+    seen[pg.title]=1;var md=ii.extmetadata||{};out.push({t:ii.thumburl||ii.url,a:stripHtml(md.Artist&&md.Artist.value)||"Auteur inconnu",l:(md.LicenseShortName&&md.LicenseShortName.value)||"Licence libre",u:ii.descriptionurl});}
+}
 function fetchPhoto(id){
-  var q=PQ[id];if(!q)return Promise.resolve(null);
-  var u="https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch="+encodeURIComponent(q+" filetype:bitmap")+"&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=1000&iiextmetadatafilter=Artist|LicenseShortName";
-  return fetch(u).then(function(r){return r.json();}).then(function(j){
-    var pages=j&&j.query&&j.query.pages?Object.keys(j.query.pages).map(function(k){return j.query.pages[k];}):[];
-    pages.sort(function(a,b){return (a.index||0)-(b.index||0);});
-    var out=[];
-    for(var i=0;i<pages.length&&out.length<5;i++){var pg=pages[i],ii=pg.imageinfo&&pg.imageinfo[0];
-      if(!ii||ii.mime!=="image/jpeg"||ii.width<1000||ii.width<ii.height*0.9||/map|plan|carte|logo|blason|panneau|affiche|gravure|dessin|lithograph|engraving|\b1[6-8]\d\d\b|\b19[0-4]\d\b/i.test(pg.title))continue;
-      var md=ii.extmetadata||{};out.push({t:ii.thumburl||ii.url,a:stripHtml(md.Artist&&md.Artist.value)||"Auteur inconnu",l:(md.LicenseShortName&&md.LicenseShortName.value)||"Licence libre",u:ii.descriptionurl});}
-    return out.length?out:null;
-  });
-}
-/* ---------- Agenda « Que faire à Paris » (open data Ville de Paris, chargé par le navigateur) ---------- */
-var EVT_BASE="https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/que-faire-a-paris-/records";
-function day0(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
-function arrond(z){z=String(z||"");var m=/^75(0\d\d)$/.exec(z);if(m){var n=+m[1].slice(1);return n===1?"1er":n+"e";}return z;}
-function evFromRec(r){
-  var ll=r.lat_lon||r.geo_point_2d;if(!ll||!r.title)return null;
-  var lat=+ll.lat,lng=+ll.lon;if(!(lat>48.6&&lat<49.3&&lng>1.7&&lng<3.0))return null;
-  var ds=r.date_start?new Date(r.date_start):null,de=r.date_end?new Date(r.date_end):ds;if(!ds||isNaN(ds))return null;
-  var aud=stripHtml((r.audience||"")+" "+(r.childrens||"")),am=/(\d{1,2})\s*ans/.exec(aud),a=[am?+am[1]:0,99];
-  var pt=String(r.price_type||"").toLowerCase(),free=pt.indexOf("gratuit")===0&&pt.indexOf("condition")<0;
-  var tags=String(r.qfap_tags||r.tags||"");
-  var id="qf-"+String(r.id||r.event_id||r.url||r.title).replace(/[^a-zA-Z0-9]/g,"").slice(-24);
-  var ev={id:id,name:stripHtml(r.title),area:[stripHtml(r.address_name||""),arrond(r.address_zipcode)].filter(Boolean).join(" · ")||"Paris",lat:lat,lng:lng,cat:"Agenda",io:r.event_indoor==1?"Intérieur":r.event_indoor==0&&r.event_indoor!==null&&r.event_indoor!==undefined?"Plein air":"Mixte",a:a,ad:free?0:null,en:free?0:null,
-    note:stripHtml(r.price_detail||"")||(free?"Gratuit":"Tarifs : voir le site"),days:ALL,hours:"Horaires : voir le site",offer:0,evt:true,ds0:day0(ds),de0:day0(de),url:r.url||"",
-    desc:stripHtml(r.lead_text||r.description||"").slice(0,260),tags:tags};
-  if(r.cover_url)PH[id]=[{t:r.cover_url,a:stripHtml(r.cover_credit||"")||"Que faire à Paris",l:"Ville de Paris",u:r.url||"https://quefaire.paris.fr"}];
-  return ev;
-}
-function addEvents(list){var have={};P.forEach(function(p){have[p.id]=1;});list.forEach(function(r){var e=evFromRec(r);if(e&&!have[e.id]){have[e.id]=1;P.push(e);}});EVN=P.filter(function(p){return p.evt;}).length;phRender();}
-var EVN=0;
-function loadEvents(){
-  if(!window.fetch)return;
-  var c=load("ev.v1",null);if(c&&Date.now()-c.t<6*3600*1000&&c.r&&c.r.length){addEvents(c.r);return;}
-  var tries=['where='+encodeURIComponent('"enfants" and date_end >= now()'),'refine='+encodeURIComponent("qfap_tags:Enfants"),'where='+encodeURIComponent('"enfants"'),''];
-  var all=[];
-  function go(i){
-    if(i>=tries.length){if(all.length){save("ev.v1",{t:Date.now(),r:all});addEvents(all);}return;}
-    fetch(EVT_BASE+"?limit=100"+(tries[i]?"&"+tries[i]:"")).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
-      var rs=(j&&j.results)||[];
-      if(!tries[i])rs=rs.filter(function(r){return /enfant|famille|jeune public|kids/i.test((r.qfap_tags||"")+" "+(r.audience||"")+" "+(r.title||"")+" "+(r.lead_text||""));});
-      all=all.concat(rs);if(all.length>=40||i>=2){save("ev.v1",{t:Date.now(),r:all});addEvents(all);}else go(i+1);
-    }).catch(function(){go(i+1);});
+  var qs=[PQ[id]].concat(PQ2[id]||[]).filter(Boolean);if(!qs.length)return Promise.resolve(null);
+  var out=[],seen={},all=[];
+  function step(i){
+    if(out.length>=4||i>=qs.length){if(out.length<3)wmPick(all,out,seen,false);return Promise.resolve(out.length?out:null);}
+    return wmSearch(qs[i]).then(function(pages){all=all.concat(pages);wmPick(pages,out,seen,true);return step(i+1);},function(){return step(i+1);});
   }
-  go(0);
+  return step(0);
 }
 var phTimer=0;function phRender(){clearTimeout(phTimer);phTimer=setTimeout(function(){if(!document.querySelector(".overlay"))render();},250);}
 function loadPhotos(){
@@ -430,7 +403,7 @@ function loadPhotos(){
   var todo=Object.keys(PQ).filter(function(id){return !PH[id];}),busy=0,fails=0;
   function next(){
     if(!todo.length||fails>3)return;var id=todo.shift();busy++;
-    fetchPhoto(id).then(function(ph){if(ph){PH[id]=ph;save("ph.v2",PH);phRender();}},function(){fails++;}).then(function(){busy--;next();});
+    fetchPhoto(id).then(function(ph){if(ph){PH[id]=ph;save("ph.v3",PH);phRender();}},function(){fails++;}).then(function(){busy--;next();});
   }
   for(var k=0;k<4;k++)next();
 }
