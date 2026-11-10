@@ -87,6 +87,7 @@ a{color:inherit}
 .credit a{color:var(--muted)}
 .sum{display:flex;gap:8px;flex-wrap:wrap}
 .spill{height:40px;padding:0 13px;border-radius:20px;background:var(--soft);font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go{height:42px;padding:0 14px;border-radius:12px;background:var(--accent);color:var(--ink);font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap;flex:0 0 auto}
 .spill.hol{background:#FFE1D6;color:#A8300C}
 .spill.nudge{background:var(--ink);color:var(--paper)}
 .nudgecard{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px;border-radius:16px;background:#FFF0B8}
@@ -196,6 +197,13 @@ var P=[
  {id:"asterix",name:"Parc Astérix",area:"Plailly · 60",lat:49.1341,lng:2.5710,cat:"Loisirs",io:"Plein air",a:[3,99],ad:null,en:null,note:"Prix variable selon la date",days:ALL,months:[4,5,6,7,8,9,10],hours:"Saison d'avril à début novembre",offer:0,desc:"Montagnes russes et villages gaulois, à environ 35 km au nord de Paris."},
  {id:"miniature",name:"France Miniature",area:"Élancourt · 78",lat:48.7713,lng:1.9693,cat:"Loisirs",io:"Plein air",a:[3,12],ad:null,en:null,note:"Tarifs : voir le site",days:ALL,months:[4,5,6,7,8,9,10],hours:"Saison d'avril à octobre",offer:0,desc:"Les monuments de France en miniature, plus quelques attractions."}
 ];
+P.push(
+ {id:"orsay",name:"Musée d'Orsay",area:"7e",lat:48.8600,lng:2.3266,cat:"Musée",io:"Intérieur",a:[6,99],ad:null,en:0,note:"Gratuit moins de 18 ans · tarif adulte : voir le site",days:NOMON,hours:"9h30 – 18h",hc:true,offer:0,f1:{resa:"obligatoire"},desc:"Horloges géantes, animaux sculptés de Pompon et peintres impressionnistes, dans une ancienne gare."},
+ {id:"carnavalet",name:"Musée Carnavalet",area:"Marais · 3e",lat:48.8575,lng:2.3624,cat:"Musée",io:"Intérieur",a:[6,99],ad:0,en:0,note:"Collections permanentes gratuites toute l'année",days:NOMON,hours:"10h – 18h",hc:true,offer:0,desc:"L'histoire de Paris en enseignes, maquettes et boutiques reconstituées."},
+ {id:"mam",name:"Musée d'Art Moderne de Paris",area:"16e",lat:48.8641,lng:2.2977,cat:"Musée",io:"Intérieur",a:[4,99],ad:0,en:0,note:"Collections permanentes gratuites toute l'année",days:NOMON,hours:"10h – 18h",hc:true,offer:0,desc:"De grandes toiles très colorées, dont l'immense Fée Électricité de Dufy."},
+ {id:"chasse",name:"Musée de la Chasse et de la Nature",area:"Marais · 3e",lat:48.8614,lng:2.3612,cat:"Musée",io:"Intérieur",a:[5,99],ad:null,en:null,note:"Gratuit le 1er dimanche du mois",days:NOMON,hours:"11h – 18h",hc:true,offer:0,f1:{resa:"conseillée"},desc:"Animaux naturalisés et cabinets de curiosités, dans un hôtel particulier du Marais."}
+);
+P.forEach(function(p){if(p.id==="branly")p.f1={resa:"conseillée"};if(p.id==="artsmetiers")p.f1={};if(p.id==="versailles")p.f1={months:[1,2,3,11,12],resa:"conseillée"};});
 P.forEach(function(p){p.free3=/moins de 3 ans/.test(p.note);});
 var PLACES=[
  ["Paris 1er",48.8626,2.3363],["Paris 2e",48.8683,2.3428],["Paris 3e",48.8630,2.3600],["Paris 4e",48.8543,2.3576],["Paris 5e",48.8445,2.3500],["Paris 6e",48.8491,2.3328],["Paris 7e",48.8562,2.3121],["Paris 8e",48.8727,2.3125],["Paris 9e",48.8770,2.3375],["Paris 10e",48.8761,2.3607],["Paris 11e",48.8591,2.3800],["Paris 12e",48.8400,2.3950],["Paris 13e",48.8283,2.3623],["Paris 14e",48.8292,2.3266],["Paris 15e",48.8401,2.2930],["Paris 16e",48.8604,2.2620],["Paris 17e",48.8873,2.3067],["Paris 18e",48.8925,2.3484],["Paris 19e",48.8871,2.3848],["Paris 20e",48.8634,2.4012],
@@ -238,6 +246,10 @@ var ILL={
  asterix:["#FF8FAB",'<rect x="0" y="52" width="64" height="12" fill="#7BC67E"/><circle cx="32" cy="30" r="14" fill="none" stroke="#A8300C" stroke-width="4"/><path d="M3 52 C12 52 18 44 22 40 M42 40 C46 44 52 52 61 52" stroke="#A8300C" stroke-width="4" fill="none"/><path d="M20 52V38M32 52V44M44 52V38" stroke="#7A4A12" stroke-width="2"/><rect x="27" y="12.5" width="10" height="5" rx="2" fill="#FFC93D"/>'],
  miniature:["#9FE0B5",'<rect x="0" y="50" width="64" height="14" fill="#3FB86F"/><path d="M19 50 L25 18 L31 50" stroke="#B5651D" stroke-width="2.5" fill="none"/><path d="M21 40h8M23 30h4" stroke="#B5651D" stroke-width="2"/><circle cx="42" cy="31" r="10.5" fill="#fff" fill-opacity=".55" stroke="#0B0B0B" stroke-width="3"/><path d="M49.5 38.5 L58 47" stroke="#0B0B0B" stroke-width="4.5" stroke-linecap="round"/>']
 };
+ILL.orsay=["#FFE07A",'<circle cx="32" cy="30" r="20" fill="#fff" stroke="#0B0B0B" stroke-width="3"/><path d="M32 14v4M32 42v4M16 30h4M44 30h4" stroke="#0B0B0B" stroke-width="2"/><path d="M32 30V19M32 30l8 5" stroke="#FF5B2E" stroke-width="3" stroke-linecap="round"/><rect x="6" y="54" width="52" height="4" fill="#0B0B0B"/>'];
+ILL.carnavalet=["#BEE7FF",'<path d="M14 10h4v40h-4z" fill="#0B0B0B"/><path d="M18 14h30v4H18z" fill="#0B0B0B"/><rect x="24" y="18" width="22" height="16" rx="3" fill="#FFC93D" stroke="#0B0B0B" stroke-width="2"/><path d="M29 26h12" stroke="#A8300C" stroke-width="3" stroke-linecap="round"/><rect x="0" y="50" width="64" height="14" fill="#7BC67E"/>'];
+ILL.mam=["#FFD1DC",'<rect x="8" y="12" width="48" height="34" fill="#fff" stroke="#0B0B0B" stroke-width="2"/><rect x="12" y="16" width="12" height="26" fill="#2F6BFF"/><rect x="26" y="16" width="12" height="26" fill="#FFC93D"/><rect x="40" y="16" width="12" height="26" fill="#FF5B2E"/><path d="M14 22l8 6-8 6M42 22l8 4-8 4" stroke="#fff" stroke-width="2" fill="none"/><rect x="6" y="54" width="52" height="4" fill="#0B0B0B"/>'];
+ILL.chasse=["#C8F2A6",'<path d="M20 12 L24 24 M18 18h7 M44 12 L40 24 M46 18h-7" stroke="#7A4A12" stroke-width="3" stroke-linecap="round"/><ellipse cx="32" cy="34" rx="11" ry="14" fill="#B5651D"/><ellipse cx="32" cy="42" rx="6" ry="5" fill="#E6C29A"/><circle cx="27" cy="31" r="1.8" fill="#0B0B0B"/><circle cx="37" cy="31" r="1.8" fill="#0B0B0B"/><path d="M22 24 C16 22 14 28 20 30 M42 24 C48 22 50 28 44 30" fill="#B5651D"/><rect x="18" y="52" width="28" height="6" rx="2" fill="#7A4A12"/>'];
 function catTag(p){var t=TINT[p.cat]||TINT.Château;return '<span class="tag" style="background:'+t[0]+';color:'+t[1]+'">'+esc(p.cat)+'</span>';}
 
 /* ---------- Jours fériés ---------- */
@@ -250,6 +262,9 @@ var HOL={};
   var e=easter(y);HOL[key(addDays(e,1))]="Lundi de Pâques";HOL[key(addDays(e,39))]="Ascension";HOL[key(addDays(e,50))]="Lundi de Pentecôte";
 });
 function holName(d){return HOL[key(d)]||null;}
+/* Vacances scolaires zone C (arrêté du 22 octobre 2025) : premier jour, jour de reprise */
+var VAC=[[2026,11,19,2027,0,4,"Vacances de Noël"],[2027,1,6,2027,1,22,"Vacances d'hiver"],[2027,3,3,2027,3,19,"Vacances de printemps"],[2027,6,3,2027,8,1,"Vacances d'été"]];
+function vacName(d){for(var i=0;i<VAC.length;i++){var v=VAC[i],a=new Date(v[0],v[1],v[2]),b=new Date(v[3],v[4],v[5]);if(d>=a&&d<b)return v[6];}return null;}
 function bigClosed(d){var m=d.getMonth(),n=d.getDate();return (m===0&&n===1)||(m===4&&n===1)||(m===11&&n===25);}
 function isOpen(p,d){
   if(p.months&&p.months.indexOf(d.getMonth()+1)<0)return false;
@@ -277,19 +292,24 @@ function here(){return S.geo||PLACES[S.where];}
 function km(p){var h=here();return dist(h[1],h[2],p.lat,p.lng);}
 function travel(k){if(k<1.6)return Math.max(3,Math.round(k*13))+" min à pied";if(k<25)return Math.round(10+k*3.2)+" min en transport";return Math.round(k*1.1)+" min en voiture";}
 function eur(n){return (Math.round(n*100)/100).toFixed(2).replace(".00","").replace(".",",")+" €";}
-function kidCost(p){return p.en!=null?p.en:p.ad;}
-function priceLabel(p){var ft=famTotal(p);if(ft!=null)return ft===0?"Gratuit":"≈ "+eur(ft);var c=kidCost(p);if(c===0&&p.ad===0)return "Gratuit";if(p.en===0)return "Gratuit enfant";if(c==null)return "Voir tarifs";return "dès "+eur(c);}
-function shortPrice(p){var c=kidCost(p);if(c===0&&p.ad===0)return "Gratuit";if(p.en===0)return "0 € enf.";if(c==null)return "€";return eur(c);}
+function firstSun(d){return d.getDay()===0&&d.getDate()<=7;}
+function f1Today(p){return !!(p.f1&&firstSun(S.date)&&(!p.f1.months||p.f1.months.indexOf(S.date.getMonth()+1)>=0));}
+function nextF1(p){for(var i=0;i<400;i++){var d=addDays(S.date,i);if(firstSun(d)&&(!p.f1.months||p.f1.months.indexOf(d.getMonth()+1)>=0))return d;}return null;}
+function eff(p){return f1Today(p)?{ad:0,en:0}:{ad:p.ad,en:p.en};}
+function f1Tag(p){return f1Today(p)?'<span class="tag" style="background:#DFF5D3;color:#1E6B3A">Gratuit ce 1er dimanche</span>':'';}
+function kidCost(p){var e=eff(p);return e.en!=null?e.en:e.ad;}
+function priceLabel(p){var ft=famTotal(p);if(ft!=null)return ft===0?"Gratuit":"≈ "+eur(ft);var c=kidCost(p);if(c===0&&eff(p).ad===0)return "Gratuit";if(eff(p).en===0)return "Gratuit enfant";if(c==null)return "Voir tarifs";return "dès "+eur(c);}
+function shortPrice(p){var c=kidCost(p);if(c===0&&eff(p).ad===0)return "Gratuit";if(eff(p).en===0)return "0 € enf.";if(c==null)return "€";return eur(c);}
 function ageText(p){return p.a[1]>=99?(p.a[0]===0?"Tous âges":"Dès "+p.a[0]+" ans"):p.a[0]+"–"+p.a[1]+" ans";}
 var AGES=[["0–2",0,2],["3–5",3,5],["6–9",6,9],["10–12",10,12],["13+",13,99]];
 function norm(t){return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
 function famTotal(p){
-  if(!S.fam)return null;var K=S.fam.kids,ad=p.ad,en=p.en;
+  if(!S.fam)return null;var K=S.fam.kids,e0=eff(p),ad=e0.ad,en=e0.en;
   var payKids=K.filter(function(k){return !(p.free3&&k<3);}).length;
   if(ad==null||(payKids&&en==null))return null;
   return S.fam.ad*ad+payKids*(en||0);
 }
-function isFree(p){var t=famTotal(p);if(t!=null)return t===0;return p.ad===0&&kidCost(p)===0;}
+function isFree(p){var t=famTotal(p);if(t!=null)return t===0;return eff(p).ad===0&&kidCost(p)===0;}
 function ageFit(p){
   if(!S.fam||!S.fam.kids.length)return {ok:true,all:true,miss:[]};
   var miss=S.fam.kids.filter(function(k){return !(p.a[0]<=k&&p.a[1]>=k);});
@@ -304,21 +324,27 @@ function hoursStatus(p){
   if(c-n<=60)return {t:"Ferme bientôt ("+cl+")",c:"#A8300C"};
   return {t:"Ouvert jusqu'à "+cl,c:"#1E6B3A"};
 }
+function napOk(p){
+  var m=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours);if(!m)return true;
+  var o=+m[1]*60+(+m[2]||0),c=+m[3]*60+(+m[4]||0);
+  return (13*60-o)>=120||(c-(15*60+30))>=120;
+}
 function matches(p){
   if(!isOpen(p,S.date))return false;
   if(S.q){var q=norm(S.q.trim());if(q.length>3)q=q.replace(/s$/,"");if(norm(p.name+" "+p.area+" "+p.cat+" "+p.io+" "+p.desc).indexOf(q)<0)return false;}
   if(!ageFit(p).ok)return false;
+  if(S.fam&&S.fam.nap&&!napOk(p))return false;
   if(S.quick.free&&!isFree(p))return false;
   if(S.quick.dry&&p.io==="Plein air")return false;
   if(S.quick.near&&km(p)>3)return false;
   if(S.quick.deal&&!p.offer)return false;
   return true;
 }
-function results(){return P.filter(matches).sort(function(a,b){var ca=(hoursStatus(a)||{}).closed?1:0,cb=(hoursStatus(b)||{}).closed?1:0;return ca-cb||km(a)-km(b);});}
+function results(){return P.filter(matches).sort(function(a,b){var ca=(hoursStatus(a)||{}).closed?1:0,cb=(hoursStatus(b)||{}).closed?1:0;return ca-cb||(ageFit(a).all?0:1)-(ageFit(b).all?0:1)||km(a)-km(b);});}
 function toast(t){var el=document.createElement("div");el.className="toast";el.textContent=t;el.setAttribute("role","status");document.getElementById("app").appendChild(el);setTimeout(function(){el.remove();},1800);}
 function ill(id,extra){var d=ILL[id]||["#F2F2F0",""];return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
 /* ---------- Photos Wikimedia Commons (chargées par le navigateur, crédit obligatoire) ---------- */
-var PQ={acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
+var PQ={orsay:"Musée d'Orsay nef",carnavalet:"Musée Carnavalet",mam:"Musée d'Art Moderne de Paris",chasse:"Musée de la Chasse et de la Nature",acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
 var PH=load("ph.v2",{});
 function ph1(id){var a=PH[id];return a&&a.length?a[0]:null;}
 function stripHtml(h){try{return (new DOMParser().parseFromString(h||"","text/html").body.textContent||"").trim().replace(/\s+/g," ");}catch(e){return "";}}
@@ -452,8 +478,9 @@ function dateChips(){
   if(hol)out.push([DOW[hol.getDay()].replace(".","")+". "+hol.getDate()+" · férié",hol,true]);
   return out;
 }
-function famText(){if(!S.fam)return "Qui vient ?";var k=S.fam.kids.slice().sort(function(a,b){return a-b;});return S.fam.ad+" adulte"+(S.fam.ad>1?"s":"")+(k.length?" · "+(k.length===1?(k[0]||"bébé")+(k[0]?" an"+(k[0]>1?"s":""):""):k.map(function(x){return x||"bébé";}).join(", ").replace(/, ([^,]*)$/," et $1")+" ans"):"");}
-function whenText(){var h=holName(S.date);if(key(S.date)===key(TODAY))return "Aujourd'hui";if(key(S.date)===key(addDays(TODAY,1)))return "Demain";return fmtDay(S.date)+(h?" · férié":"");}
+function famText(){if(!S.fam)return "Qui vient ?";return famText0()+(S.fam.nap?" · sieste":"");}
+function famText0(){var k=S.fam.kids.slice().sort(function(a,b){return a-b;});return S.fam.ad+" adulte"+(S.fam.ad>1?"s":"")+(k.length?" · "+(k.length===1?(k[0]||"bébé")+(k[0]?" an"+(k[0]>1?"s":""):""):k.map(function(x){return x||"bébé";}).join(", ").replace(/, ([^,]*)$/," et $1")+" ans"):"");}
+function whenText(){var h=holName(S.date);if(key(S.date)===key(TODAY))return "Aujourd'hui";if(key(S.date)===key(addDays(TODAY,1)))return "Demain";return fmtDay(S.date)+(h?" · férié":firstSun(S.date)?" · 1er dim.":"");}
 var CAL='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>';
 var FAM='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="10" r="2.2"/><path d="M3 20a6 6 0 0 1 12 0M14 20a4 4 0 0 1 7 0"/></svg>';
 function renderExplore(){
@@ -461,10 +488,10 @@ function renderExplore(){
   var html='<div class="map" id="map"><div class="topbar"><div class="logo">on sort<i>.</i></div><button class="pillbtn" data-act="where" aria-label="Changer de point de départ, actuellement '+esc(h[0])+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="#2F6BFF" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>'+esc(h[0])+'</button></div>'+
    '<div class="mapctl"><button data-act="recenter" aria-label="Recentrer sur mon point de départ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div></div>';
   html+='<div class="sheet"><button class="grabbtn" data-act="sheet" aria-label="'+(S.full?"Afficher la liste":"Afficher la carte en grand")+'" aria-expanded="'+(!S.full)+'"><span class="grab"></span></button><div class="scroll" id="scroll">';
-  html+='<div class="search"><input id="q" type="search" placeholder="On sort où ?" aria-label="Chercher une sortie, un lieu, une envie" value="'+esc(S.q)+'" autocomplete="off"></div>';
+  html+='<div class="search"><input id="q" type="search" placeholder="On sort où ?" aria-label="Chercher une sortie, un lieu, une envie" value="'+esc(S.q)+'" autocomplete="off"><button class="go" data-act="pick">On sort ?</button></div>';
   html+='<div class="sum"><button class="spill'+(hol?" hol":"")+'" data-act="date">'+CAL+esc(whenText())+'</button><button class="spill'+(S.fam?"":" nudge")+'" data-act="fam">'+FAM+esc(famText())+'</button></div>';
   html+='<div class="chips" role="group" aria-label="Raccourcis">'+[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]].map(function(b){return '<button class="chip" data-quick="'+b[0]+'" aria-pressed="'+S.quick[b[0]]+'">'+b[1]+'</button>';}).join("")+'</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:2px"><h1 class="headline">'+list.length+' sortie'+(list.length>1?"s":"")+' pour vous</h1><span class="label">'+esc(fmtDay(S.date))+(hol?" · "+esc(hol)+", jour férié":"")+' · depuis '+esc(h[0])+'</span></div>';
+  html+='<div style="display:flex;flex-direction:column;gap:2px"><h1 class="headline">'+list.length+' sortie'+(list.length>1?"s":"")+' pour vous</h1><span class="label">'+esc(fmtDay(S.date))+(hol?" · "+esc(hol)+", jour férié":"")+(vacName(S.date)?" · "+esc(vacName(S.date)):"")+(firstSun(S.date)?" · 1er dimanche : musées gratuits":"")+' · depuis '+esc(h[0])+'</span></div>';
   if(!S.fam)html+='<button class="nudgecard" data-act="fam"><b>Ajoute l’âge de tes enfants</b><span>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</span></button>';
   if(!list.length){
     var on=[[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]]].filter(function(b){return S.quick[b[0]];});
@@ -476,14 +503,14 @@ function renderExplore(){
 function rowCompact(p){
   var k=km(p),st=hoursStatus(p),fit=ageFit(p);
   var sub=travel(k)+(st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
-  return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
+  return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
 }
 function rowHtml(p){
   var a=PH[p.id];if(!a||!a.length)return rowCompact(p);
   var k=km(p),st=hoursStatus(p),fit=ageFit(p);
   var sub=travel(k)+(st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
   return '<div class="card'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'"><div class="strip">'+a.map(function(ph,i){return '<img src="'+esc(ph.t)+'" alt=""'+(i?' loading="lazy"':'')+' onerror="this.remove()">';}).join("")+'</div>'+
-    '<button class="cardinfo" data-open="'+p.id+'"><span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button></div>';
+    '<button class="cardinfo" data-open="'+p.id+'"><span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button></div>';
 }
 function renderFavs(){
   var html='<div class="plain"><h1 class="bigtitle">Mes sorties</h1>';
@@ -509,11 +536,12 @@ var SHARE='<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="c
 function openPlace(id){
   var p=P.filter(function(x){return x.id===id;})[0];if(!p)return;
   var fav=S.favs.indexOf(p.id)>=0,open=isOpen(p,S.date),k=km(p),st=hoursStatus(p),fit=ageFit(p),ft=famTotal(p);
-  var bookable=p.ad!=null&&p.en!=null&&(p.ad>0||p.en>0)&&open;
+  var e=eff(p),bookable=e.ad!=null&&e.en!=null&&(e.ad>0||e.en>0)&&open;
   var dir="https://www.google.com/maps/dir/?api=1&destination="+p.lat+","+p.lng;
   var rows='<div class="fact"><span>'+esc(fmtDay(S.date))+'</span><span style="color:'+(open?(st?st.c:"#1E6B3A"):"#A8300C")+'">'+(open?(st?esc(st.t):"Ouvert · "+esc(p.hours)):"Fermé ce jour-là")+'</span></div>';
   if(S.fam&&ft!=null)rows+='<div class="fact"><span>Pour vous ('+esc(famText())+')</span><span style="font-size:16px">'+(ft===0?"Gratuit":eur(ft))+'</span></div>';
-  rows+='<div class="fact"><span>Adulte</span><span>'+(p.ad==null?"Voir le site":p.ad===0?"Gratuit":eur(p.ad))+'</span></div><div class="fact"><span>Enfant</span><span>'+(p.en==null?"Voir le site":p.en===0?"Gratuit":eur(p.en))+'</span></div><div class="fact"><span>À savoir</span><span>'+esc(p.note)+'</span></div>';
+  if(p.f1){var nf=nextF1(p);rows+=f1Today(p)?'<div class="fact" style="background:#DFF5D3"><span style="color:#1E6B3A">1er dimanche du mois</span><span style="color:#1E6B3A">Gratuit pour tous'+(p.f1.resa?' · réservation '+esc(p.f1.resa):'')+'</span></div>':(nf?'<div class="fact"><span>Gratuit pour tous</span><span>le '+esc(fmtDay(nf))+(p.f1.resa?' · réservation '+esc(p.f1.resa):'')+'</span></div>':'');}
+  rows+='<div class="fact"><span>Adulte</span><span>'+(e.ad==null?"Voir le site":e.ad===0?"Gratuit":eur(e.ad))+'</span></div><div class="fact"><span>Enfant</span><span>'+(e.en==null?"Voir le site":e.en===0?"Gratuit":eur(e.en))+'</span></div><div class="fact"><span>À savoir</span><span>'+esc(p.note)+'</span></div>';
   var h='<div class="ovtop"><button class="round" data-act="close" aria-label="Retour">'+BACK+'</button><span style="display:flex;gap:8px"><button class="round" data-share="'+p.id+'" aria-label="Partager">'+SHARE+'</button><button class="round" data-fav="'+p.id+'" aria-label="'+(fav?"Retirer des favoris":"Ajouter aux favoris")+'" aria-pressed="'+fav+'">'+heart(fav)+'</button></span></div>'+
   '<div class="ovbody">'+heroHtml(p)+
   '<div style="display:flex;flex-direction:column;gap:6px"><h2 class="headline" style="font-size:28px">'+esc(p.name)+'</h2><span class="label">'+esc(p.area)+' · '+esc(travel(k))+' depuis '+esc(here()[0])+'</span>'+
@@ -565,11 +593,36 @@ function openDate(){
   var o=ov(h,true);
   o.querySelector("#dpick").addEventListener("change",function(e){var q=e.target.value.split("-");if(q.length===3){S.date=new Date(+q[0],+q[1]-1,+q[2]);closeOv();render();}});
 }
+var PICKN=0;
+function pickList(){
+  return results().filter(function(p){return !(hoursStatus(p)||{}).closed;}).map(function(p){
+    var k=km(p),mins=k<1.6?k*13:10+k*3.2,sc=-mins+(ageFit(p).all?15:0)+(isFree(p)?8:0)+(p.offer?6:0)+(f1Today(p)?10:0)+(p.isNew?4:0)+(PH[p.id]?2:0);
+    return {p:p,sc:sc};}).sort(function(a,b){return b.sc-a.sc;}).map(function(x){return x.p;});
+}
+function openPick(){
+  var L=pickList();
+  if(!L.length){toast("Aucune idée avec ces réglages");return;}
+  var p=L[PICKN%L.length],ph=ph1(p.id),st=hoursStatus(p),fit=ageFit(p),pl=priceLabel(p);
+  var why=['<span class="tag">'+esc(travel(km(p)))+'</span>'];
+  if(st)why.push('<span class="tag" style="color:'+st.c+'">'+esc(st.t)+'</span>');
+  why.push('<span class="tag">'+esc(pl==="Gratuit"?"Gratuit pour vous":pl)+'</span>');
+  if(S.fam&&S.fam.kids.length>1&&fit.all)why.push('<span class="tag">Pour tous tes enfants</span>');
+  if(f1Today(p))why.push('<span class="tag" style="background:#DFF5D3;color:#1E6B3A">1er dimanche gratuit</span>');
+  if(p.offer)why.push('<span class="tag" style="background:#FF5B2E">−'+p.offer+' %</span>');
+  var pic=ph?'<img src="'+esc(ph.t)+'" alt="" style="width:100%;height:100%;object-fit:cover">':ill(p.id);
+  var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Notre idée '+(PICKN%L.length+1)+' / '+L.length+'</b><button class="round" data-act="close" aria-label="Fermer">'+X+'</button></div><div class="ovbody">'+
+    '<div class="hero" style="height:200px;background:'+(ILL[p.id]||["#F2F2F0"])[0]+'">'+pic+'</div>'+
+    '<h2 class="headline" style="font-size:28px">'+esc(p.name)+'</h2><span class="label" style="margin-top:-8px">'+esc(p.area)+'</span>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+why.join("")+'</div></div>'+
+    '<div class="ovfoot"><button class="ghost" data-act="picknext">Une autre idée</button><button class="cta" data-open="'+p.id+'">C’est parti</button></div></div>';
+  ov(h,true);
+}
 function openFam(){
   var f=S.fam||{ad:2,kids:[]};
   var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Qui vient ?</b><button class="round" data-act="famdone" aria-label="Fermer">'+X+'</button></div><div class="ovbody">'+
   '<div class="stepper" style="border-top:1px solid #E6E6E2"><span style="font-weight:600;font-size:16px">Adultes</span><div><button data-famad="-1" aria-label="Un adulte de moins">−</button><b>'+f.ad+'</b><button data-famad="1" aria-label="Un adulte de plus">+</button></div></div>'+
   '<span class="label">Enfants '+(f.kids.length?'· touche pour retirer':'')+'</span><div style="display:flex;gap:8px;flex-wrap:wrap">'+(f.kids.length?f.kids.map(function(k,i){return '<button class="chip" aria-pressed="true" data-kidrm="'+i+'" aria-label="Retirer l’enfant de '+k+' ans">'+(k?k+" an"+(k>1?"s":""):"Bébé")+'  ✕</button>';}).join(""):'<span class="rowsub">Aucun enfant ajouté</span>')+'</div>'+
+  '<button class="pick" data-act="nap" aria-pressed="'+!!f.nap+'"><span>Sieste l\u2019après-midi (13h – 15h30)<br><span class="rowsub" style="font-weight:500">Ne montre que ce qui tient le matin ou en fin de journée</span></span><span style="color:'+(f.nap?'#1E6B3A':'#5E5E5A')+'">'+(f.nap?'Oui':'Non')+'</span></button>'+
   '<span class="label">Ajouter un enfant de…</span><div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(function(a){return '<button class="chip" style="padding:0" data-kidadd="'+a+'">'+(a?a+" an"+(a>1?"s":""):"Bébé")+'</button>';}).join("")+'</div></div>'+
   '<div class="ovfoot"><button class="cta" data-act="famdone">Voir les sorties</button></div></div>';
   ov(h,true);
@@ -590,6 +643,9 @@ document.getElementById("app").addEventListener("click",function(e){
   if(d.tab){S.tab=d.tab;closeOv();render();return;}
   if(d.act==="close"){closeOv();return;}
   if(d.act==="fam"){openFam();return;}
+  if(d.act==="pick"){PICKN=0;openPick();return;}
+  if(d.act==="picknext"){PICKN++;openPick();return;}
+  if(d.act==="nap"){S.fam=S.fam||{ad:2,kids:[]};S.fam.nap=!S.fam.nap;save("fam",S.fam);openFam();render();return;}
   if(d.act==="gps"){requestGPS(true);return;}
   if(d.act==="famdone"){if(!S.fam){S.fam={ad:2,kids:[]};save("fam",S.fam);}closeOv();render();return;}
   if(d.act==="clearq"){S.q="";render();return;}
