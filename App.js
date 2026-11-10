@@ -196,18 +196,27 @@ function evDates(p, date) { const a = p.ds0, b = p.de0; if (key(a) === key(b)) r
 
 /* ============ Photos Wikimedia + agenda Que faire à Paris ============ */
 const UA = { 'Api-User-Agent': 'OnSort/0.1 (prototype appli familles)' };
-async function fetchPhotos(id) {
-  const q = PQ[id]; if (!q) return null;
+const PQ2 = {museeherbe:["Musée en Herbe","Musée en herbe Paris"],ferme:["Ferme de Paris","Ferme Georges-Ville"],daumesnil:["Lac Daumesnil barques","Lac Daumesnil"],aquarium:["Cinéaqua","Aquarium du Trocadéro"],citeenfants:["Cité des enfants","Cité des sciences Paris"],miniature:["France Miniature"],cergy:["Base de loisirs de Cergy","Étangs de Cergy"],grandpalais:["Grand Palais Paris"],philharmonie:["Philharmonie de Paris Jean Nouvel"],armee:["Musée de l'Armée"],belleville:["Parc de Belleville Paris"],floral:["Parc floral de Vincennes"],chasse:["Musée de la Chasse et de la Nature Paris"],carnavalet:["Carnavalet"],mam:["Musée d'Art moderne de la ville de Paris","Palais de Tokyo"],orsay:["Musée d'Orsay"],zoo:["Zoo de Vincennes"],evolution:["Grande galerie de l'évolution Paris"],artsmetiers:["Arts et Métiers musée Paris"],saintcloud:["Parc de Saint-Cloud"],sceaux:["Château de Sceaux"],villette:["La Villette Paris parc"],bercy:["Jardin de Bercy"],montsouris:["Parc Montsouris Paris"],citroen:["Parc André Citroën Paris"]};
+const BADPH = /map|plan|carte|logo|blason|panneau|affiche|gravure|dessin|lithograph|engraving|\b1[6-8]\d\d\b|\b19[0-4]\d\b/i;
+async function wmSearch(q) {
   const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap') + '&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=640&iiextmetadatafilter=Artist|LicenseShortName';
   const j = await (await fetch(u, { headers: UA })).json();
-  const pages = j && j.query && j.query.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 0) - (b.index || 0)) : [];
-  const out = [];
+  return j && j.query && j.query.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 0) - (b.index || 0)) : [];
+}
+function wmPick(pages, out, seen, strict) {
   for (const pg of pages) {
-    if (out.length >= 5) break; const ii = pg.imageinfo && pg.imageinfo[0];
-    if (!ii || ii.mime !== 'image/jpeg' || ii.width < 1000 || ii.width < ii.height * 0.9 || /map|plan|carte|logo|blason|panneau|affiche|gravure|dessin|lithograph|engraving|\b1[6-8]\d\d\b|\b19[0-4]\d\b/i.test(pg.title)) continue;
-    const md = ii.extmetadata || {};
+    if (out.length >= 5) break; const ii = pg.imageinfo && pg.imageinfo[0]; if (!ii || seen[pg.title]) continue;
+    const okMime = strict ? ii.mime === 'image/jpeg' : /image\/(jpeg|png|webp)/.test(ii.mime);
+    if (!okMime || ii.width < (strict ? 1000 : 700) || (strict && ii.width < ii.height * 0.9) || BADPH.test(pg.title)) continue;
+    seen[pg.title] = 1; const md = ii.extmetadata || {};
     out.push({ t: ii.thumburl || ii.url, a: stripHtml(md.Artist && md.Artist.value) || 'Auteur inconnu', l: (md.LicenseShortName && md.LicenseShortName.value) || 'Licence libre', u: ii.descriptionurl });
   }
+}
+async function fetchPhotos(id) {
+  const qs = [PQ[id]].concat(PQ2[id] || []).filter(Boolean); if (!qs.length) return null;
+  const out = [], seen = {}; let all = [];
+  for (const q of qs) { if (out.length >= 4) break; try { const pages = await wmSearch(q); all = all.concat(pages); wmPick(pages, out, seen, true); } catch (e) { } }
+  if (out.length < 3) wmPick(all, out, seen, false);
   return out.length ? out : null;
 }
 function day0(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -285,7 +294,7 @@ function Main() {
 
   useEffect(() => { (async () => {
     setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true }));
-    const ph = await loadJSON('ph.native.v2', {}); setPhotos(ph); setReady(true);
+    const ph = await loadJSON('ph.native.v3', {}); setPhotos(ph); setReady(true);
     try { const { status } = await Location.requestForegroundPermissionsAsync(); if (status === 'granted') { const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }); setGeo(['Ma position', pos.coords.latitude, pos.coords.longitude]); } } catch (e) { }
     const evPh = {}; const recs = await fetchEvents(); const have = {}; P.forEach((p) => { have[p.id] = 1; });
     const evs = recs.map((r) => evFromRec(r, evPh)).filter((e) => e && !have[e.id] && (have[e.id] = 1));
@@ -294,7 +303,7 @@ function Main() {
     for (let i = 0; i < todo.length; i += 6) {
       const batch = todo.slice(i, i + 6), got = {};
       await Promise.all(batch.map(async (id) => { try { const a = await fetchPhotos(id); if (a) got[id] = a; } catch (e) { } }));
-      if (Object.keys(got).length) { Object.assign(ph, got); setPhotos((o) => ({ ...o, ...got })); saveJSON('ph.native.v2', ph); }
+      if (Object.keys(got).length) { Object.assign(ph, got); setPhotos((o) => ({ ...o, ...got })); saveJSON('ph.native.v3', ph); }
     }
   })(); }, []);
 
