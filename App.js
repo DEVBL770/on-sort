@@ -103,6 +103,7 @@ ILL.chasse=["#C8F2A6",'<path d="M20 12 L24 24 M18 18h7 M44 12 L40 24 M46 18h-7" 
 var PQ={orsay:"Musée d'Orsay nef",carnavalet:"Musée Carnavalet",mam:"Musée d'Art Moderne de Paris",chasse:"Musée de la Chasse et de la Nature",acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
 
 
+TINT['Cinéma'] = ['#E4E0FF', '#4B2FB5']; TINT.Piscine = ['#D6F0FF', '#0B5C8A'];
 const C = { ink: '#0B0B0B', paper: '#FFFFFF', soft: '#F2F2F0', line: '#E6E6E2', muted: '#5E5E5A', accent: '#FF5B2E', accentInk: '#A8300C', blue: '#2F6BFF', green: '#1E6B3A' };
 const WEB = 'https://devbl770.github.io/on-sort';
 const LOGO_URI = WEB + '/icon-192.png';
@@ -130,6 +131,7 @@ function nextHoliday() { for (let i = 1; i < 400; i++) { const d = addDays(TODAY
 function bigClosed(d) { const m = d.getMonth(), n = d.getDate(); return (m === 0 && n === 1) || (m === 4 && n === 1) || (m === 11 && n === 25); }
 function isOpen(p, d) {
   if (p.evt) return d >= p.ds0 && d <= p.de0;
+  if (p.oh) { const r = osmHours(p.oh, d); if (r && r.open === false) return false; }
   if (p.months && p.months.indexOf(d.getMonth() + 1) < 0) return false;
   if (p.days.indexOf(d.getDay()) < 0) return false;
   if (p.hc && bigClosed(d)) return false;
@@ -163,14 +165,14 @@ function makeLogic(st) {
   const ageFit = (p) => { if (!st.fam || !st.fam.kids.length) return { ok: true, all: true, miss: [] }; const miss = st.fam.kids.filter((k) => !(p.a[0] <= k && p.a[1] >= k)); return { ok: miss.length < st.fam.kids.length, all: !miss.length, miss }; };
   const hoursStatus = (p) => {
     if (key(st.date) !== key(TODAY)) return null;
-    const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours); if (!m) return null;
+    const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(hoursFor(p, st.date)); if (!m) return null;
     const d = new Date(), n = d.getHours() * 60 + d.getMinutes(), o = +m[1] * 60 + (+m[2] || 0), c = +m[3] * 60 + (+m[4] || 0), cl = m[3] + 'h' + (m[4] || '');
     if (n < o) return { t: 'Ouvre à ' + m[1] + 'h' + (m[2] || ''), c: '#6E4D00' };
     if (n >= c) return { t: "Fermé pour aujourd'hui", c: C.accentInk, closed: true };
     if (c - n <= 60) return { t: 'Ferme bientôt (' + cl + ')', c: C.accentInk };
     return { t: "Ouvert jusqu'à " + cl, c: C.green };
   };
-  const napOk = (p) => { const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours); if (!m) return true; const o = +m[1] * 60 + (+m[2] || 0), c = +m[3] * 60 + (+m[4] || 0); return 13 * 60 - o >= 120 || c - (15 * 60 + 30) >= 120; };
+  const napOk = (p) => { const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(hoursFor(p, st.date)); if (!m) return true; const o = +m[1] * 60 + (+m[2] || 0), c = +m[3] * 60 + (+m[4] || 0); return 13 * 60 - o >= 120 || c - (15 * 60 + 30) >= 120; };
   const matches = (p) => {
     if (!isOpen(p, st.date)) return false;
     if (st.q) { let q = norm(st.q.trim()); if (q.length > 3) q = q.replace(/s$/, ''); if (norm(p.name + ' ' + p.area + ' ' + p.cat + ' ' + p.io + ' ' + (p.desc || '')).indexOf(q) < 0) return false; }
@@ -181,12 +183,18 @@ function makeLogic(st) {
     if (st.quick.dry && p.io === 'Plein air') return false;
     if (st.quick.near && km(p) > 3) return false;
     if (st.quick.deal && !p.offer) return false;
+    if (st.prefs.pmr && p.wheel === 'no') return false;
+    if (st.prefs.zone === 'paris' && dist(48.853, 2.349, p.lat, p.lng) > 6.5) return false;
+    if (st.prefs.zone === 'pc' && dist(48.853, 2.349, p.lat, p.lng) > 14) return false;
     return true;
   };
   const wet = (p) => (st.rain && p.io === 'Plein air' ? 1 : 0);
-  const results = st.places.filter(matches).sort((a, b) => ((hoursStatus(a) || {}).closed ? 1 : 0) - ((hoursStatus(b) || {}).closed ? 1 : 0) || wet(a) - wet(b) || (ageFit(a).all ? 0 : 1) - (ageFit(b).all ? 0 : 1) || km(a) - km(b));
-  const picks = results.filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(km(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) + (st.rain ? (p.io === 'Plein air' ? -14 : 10) : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
-  return { here, km, f1Today, eff, famTotal, priceLabel, shortPrice, ageFit, hoursStatus, results, picks };
+  const K = new Map();
+  const results = st.places.filter(matches).map((p) => { const k = km(p); K.set(p.id, k); return { p, k, c: (hoursStatus(p) || {}).closed ? 1 : 0, w: wet(p), f: ageFit(p).all ? 0 : 1 }; })
+    .sort((a, b) => a.c - b.c || a.w - b.w || a.f - b.f || a.k - b.k).map((x) => x.p);
+  const km0 = km; const kmc = (p) => (K.has(p.id) ? K.get(p.id) : km0(p));
+  const picks = results.slice(0, 300).filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(kmc(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) + (st.rain ? (p.io === 'Plein air' ? -14 : 10) : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
+  return { here, km: kmc, f1Today, eff, famTotal, priceLabel, shortPrice, ageFit, hoursStatus, results, picks, isFree };
 }
 function famText(fam) {
   if (!fam) return 'Qui vient ?';
@@ -235,7 +243,13 @@ function evFromRec(r, photos) {
 async function fetchEvents() {
   const base = 'https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/que-faire-a-paris-/records?limit=100';
   const tries = ['&where=' + encodeURIComponent('"enfants" and date_end >= now()'), '&refine=' + encodeURIComponent('qfap_tags:Enfants'), '&where=' + encodeURIComponent('"enfants"')];
-  for (const t of tries) { try { const r = await fetch(base + t); if (!r.ok) continue; const j = await r.json(); if (j.results && j.results.length) return j.results; } catch (e) { } }
+  for (const t of tries) {
+    try {
+      let all = [];
+      for (let off = 0; off < 400; off += 100) { const r = await fetch(base + t + '&offset=' + off); if (!r.ok) break; const j = await r.json(); const rs = j.results || []; all = all.concat(rs); if (rs.length < 100) break; }
+      if (all.length) return all;
+    } catch (e) { }
+  }
   return [];
 }
 /* Météo : Open-Meteo (CC BY 4.0) — offre gratuite non commerciale, à passer en offre payante au lancement */
@@ -260,6 +274,73 @@ async function fetchToilets(lat, lng) {
     .filter((x) => x.lat && x.ok).map((x) => ({ ...x, d: dist(lat, lng, x.lat, x.lng) })).sort((a, b) => a.d - b.d);
 }
 const mTxt = (k) => (k < 1 ? Math.round(k * 1000 / 10) * 10 + ' m' : k.toFixed(1).replace('.', ',') + ' km');
+/* ---------- Lieux Île-de-France : OpenStreetMap (© contributeurs OpenStreetMap, ODbL) ---------- */
+const OVQ = '[out:json][timeout:120][bbox:48.12,1.44,49.25,3.56];(nwr["tourism"~"^(museum|zoo|aquarium|theme_park)$"]["name"];nwr["tourism"="attraction"]["attraction"="animal"]["name"];nwr["leisure"~"^(water_park|ice_rink|bowling_alley|miniature_golf|trampoline_park)$"]["name"];nwr["leisure"="sports_centre"]["sport"~"swimming|trampoline|climbing"]["name"];nwr["leisure"="park"]["name"]["wikidata"];nwr["amenity"~"^(cinema|planetarium)$"]["name"];);out center tags qt;';
+const OVS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+async function fetchOSM() {
+  for (const u of OVS) {
+    try { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(OVQ) }); if (!r.ok) continue; const j = await r.json(); if (j.elements && j.elements.length) return j.elements; } catch (e) { }
+  }
+  return [];
+}
+function osmCat(t) {
+  if (t.tourism === 'museum') return ['Musée', 'Intérieur'];
+  if (t.tourism === 'aquarium') return ['Animaux', 'Intérieur'];
+  if (t.tourism === 'zoo' || t.attraction === 'animal') return ['Animaux', 'Plein air'];
+  if (t.tourism === 'theme_park' || t.leisure === 'water_park') return ['Loisirs', 'Plein air'];
+  if (t.leisure === 'park') return ['Parc', 'Plein air'];
+  if (t.amenity === 'cinema') return ['Cinéma', 'Intérieur'];
+  if (t.amenity === 'planetarium') return ['Sciences', 'Intérieur'];
+  if (/swimming/.test(t.sport || '')) return ['Piscine', 'Intérieur'];
+  return ['Loisirs', 'Intérieur'];
+}
+function commonsPhoto(v) {
+  if (!v) return null; const m = /File:(.+)$/i.exec(decodeURIComponent(String(v))); if (!m) return null; const f = m[1].replace(/ /g, '_');
+  return { t: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=640', a: 'voir la page de la photo', l: 'Wikimedia Commons', u: 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(f) };
+}
+function osmToPlace(el, photos) {
+  const t = el.tags || {}; const lat = el.lat || (el.center && el.center.lat), lng = el.lon || (el.center && el.center.lon);
+  if (!lat || !t.name || t.access === 'private' || t.disused || t.abandoned) return null;
+  const [cat, io] = osmCat(t), id = 'osm-' + el.type[0] + el.id, free = t.fee === 'no';
+  const ph = commonsPhoto(t.wikimedia_commons) || (t.image && /commons\.wikimedia\.org\/wiki\/File:/.test(t.image) ? commonsPhoto(t.image.split('/wiki/')[1]) : null);
+  if (ph) photos[id] = [ph];
+  const pc = t['addr:postcode'] || '', city = t['addr:city'] || '';
+  return { id, name: t.name, area: [/^75/.test(pc) ? arrond(pc) : '', city].filter(Boolean).join(' · ') || 'Île-de-France', lat: +lat, lng: +lng, cat, io, a: [0, 99], ad: free ? 0 : null, en: free ? 0 : null,
+    note: free ? 'Entrée libre' : 'Tarifs : voir le site du lieu', days: ALL, hours: 'Horaires : voir le site', oh: t.opening_hours || '', offer: 0, osm: true, web: t.website || t['contact:website'] || '', wheel: t.wheelchair || '', desc: t.description || '' };
+}
+const OD = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+function osmHours(oh, d) {
+  if (!oh) return null; if (/24\/7/.test(oh)) return { open: true, txt: '0h – 24h' };
+  const wd = OD[d.getDay()]; let res = null, allOk = true, nOk = 0;
+  for (const rule of oh.split(';')) {
+    const r = rule.trim(); if (!r) continue; const m = /^((?:[A-Z][a-z](?:-[A-Z][a-z])?,?)+)\s+(off|closed|\d\d:\d\d-\d\d:\d\d(?:,\s?\d\d:\d\d-\d\d:\d\d)*)$/.exec(r);
+    if (!m) { if (!/^(PH|SH)\b/.test(r)) allOk = false; continue; }
+    nOk++;
+    const days = new Set();
+    m[1].split(',').filter(Boolean).forEach((part) => { const [a, b] = part.split('-'); const ia = OD.indexOf(a), ib = b ? OD.indexOf(b) : ia; if (ia < 0 || ib < 0) return; let i = ia; for (let k = 0; k < 7; k++) { days.add(OD[i]); if (i === ib) break; i = (i + 1) % 7; } });
+    if (days.has(wd)) res = m[2] === 'off' || m[2] === 'closed' ? { open: false, txt: '' } : { open: true, txt: m[2].split(',')[0].replace(/(\d\d):00/g, (x, h) => +h + 'h').replace(/(\d\d):(\d\d)/g, (x, h, mm) => +h + 'h' + mm).replace('-', ' – ') };
+  }
+  if (!res && allOk && nOk) return { open: false, txt: '' };
+  return res;
+}
+function hoursFor(p, d) { if (p.oh) { const r = osmHours(p.oh, d); return r && r.open ? r.txt : 'Horaires : voir le site'; } return p.hours; }
+/* Photos à la demande pour les lieux visibles à l'écran */
+const LAZY = { busy: 0, q: [], tried: {}, cb: null };
+function lazyPhoto(p) { if (LAZY.tried[p.id]) return; LAZY.tried[p.id] = 1; LAZY.q.push(p); pumpLazy(); }
+function pumpLazy() {
+  while (LAZY.busy < 3 && LAZY.q.length) {
+    const p = LAZY.q.shift(); LAZY.busy++;
+    (async () => {
+      try {
+        const city = p.area.split(' · ').pop(), words = norm(p.name).split(/[^a-z0-9]+/).filter((w) => w.length > 3 && !/^(parc|musee|piscine|cinema|jardin|centre|salle|espace|square|municipal|municipale)$/.test(w));
+        const pages = (await wmSearch(p.name + (city && city !== 'Île-de-France' && !/^\d/.test(city) ? ' ' + city : ''))).filter((pg) => !words.length || words.some((w) => norm(pg.title).indexOf(w) >= 0));
+        const out = [], seen = {}; wmPick(pages, out, seen, true); if (out.length < 2) wmPick(pages, out, seen, false);
+        if (out.length && LAZY.cb) LAZY.cb(p.id, out);
+      } catch (e) { }
+      LAZY.busy--; pumpLazy();
+    })();
+  }
+}
 async function loadJSON(k, d) { try { const v = await AsyncStorage.getItem('onsort.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
 function saveJSON(k, v) { AsyncStorage.setItem('onsort.' + k, JSON.stringify(v)).catch(() => { }); }
 
@@ -318,6 +399,9 @@ function Main() {
   const mapRef = useRef(null);
   useEffect(() => { const t = setTimeout(() => setQ(qIn), 250); return () => clearTimeout(t); }, [qIn]);
   const openId = useCallback((id) => setOpen(id), []);
+  const photosRef = useRef({}); photosRef.current = photos;
+  useEffect(() => { let pend = {}, tm = null; LAZY.cb = (id, out) => { pend[id] = out; if (!tm) tm = setTimeout(() => { const b = pend; pend = {}; tm = null; setPhotos((o) => { const n = { ...o, ...b }; saveJSON('ph.native.v3', Object.fromEntries(Object.entries(n).filter(([k]) => !/^qf-/.test(k)))); return n; }); }, 600); }; return () => { LAZY.cb = null; }; }, []);
+  const onViewable = useRef(({ viewableItems }) => { viewableItems.forEach((v) => { if (v.item && !photosRef.current[v.item.id]) lazyPhoto(v.item); }); }).current;
 
   useEffect(() => { (async () => {
     setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true })); setTickets(await loadJSON('tickets', []));
@@ -326,7 +410,15 @@ function Main() {
     try { const h0 = PLACES[await loadJSON('where', 10)] || PLACES[10]; setWx(await fetchWeather(h0[1], h0[2])); } catch (e) { }
     const evPh = {}; const recs = await fetchEvents(); const have = {}; P.forEach((p) => { have[p.id] = 1; });
     const evs = recs.map((r) => evFromRec(r, evPh)).filter((e) => e && !have[e.id] && (have[e.id] = 1));
-    if (evs.length) { setPlaces(P.concat(evs)); setPhotos((o) => ({ ...o, ...evPh })); }
+    if (evs.length) { setPlaces((o) => o.concat(evs)); setPhotos((o) => ({ ...o, ...evPh })); }
+    let osm = await loadJSON('osm.v1', null);
+    if (!osm || Date.now() - osm.t > 7 * 864e5) {
+      const els = await fetchOSM(), oph = {};
+      const list = els.map((el) => osmToPlace(el, oph)).filter(Boolean)
+        .filter((o) => !P.some((c) => { const d = dist(c.lat, c.lng, o.lat, o.lng); return d < 0.06 || (d < 0.25 && norm(c.name).slice(0, 6) === norm(o.name).slice(0, 6)); }));
+      if (list.length) { osm = { t: Date.now(), places: list, photos: oph }; saveJSON('osm.v1', osm); }
+    }
+    if (osm && osm.places) { setPlaces((o) => o.concat(osm.places.filter((x) => !have[x.id] && (have[x.id] = 1)))); setPhotos((o) => ({ ...osm.photos, ...o })); }
     const todo = Object.keys(PQ).filter((id) => !ph[id]);
     for (let i = 0; i < todo.length; i += 6) {
       const batch = todo.slice(i, i + 6), got = {};
@@ -340,7 +432,7 @@ function Main() {
   const L = useMemo(() => makeLogic(st), [geo, where, date, q, quick, fam, prefs, places, rain]);
   const hol = holName(date), vac = vacName(date);
   const sel = open ? places.find((p) => p.id === open) : null;
-  const toggleFav = (id) => { const n = favs.indexOf(id) >= 0 ? favs.filter((x) => x !== id) : favs.concat(id); setFavs(n); saveJSON('favs', n); };
+  const toggleFav = (id) => setFavs((o) => { const n = o.indexOf(id) >= 0 ? o.filter((x) => x !== id) : o.concat(id); saveJSON('favs', n); return n; });
   const setFamS = (f) => { setFam(f); saveJSON('fam', f); };
   const recenter = () => { const h = L.here; mapRef.current && mapRef.current.animateCamera({ center: { latitude: h[1], longitude: h[2] }, zoom: 13, heading: 0, pitch: 30 }, { duration: 600 }); };
   useEffect(() => { if (ready) recenter(); }, [geo, where, ready]);
@@ -350,7 +442,7 @@ function Main() {
   const whenText = key(date) === key(TODAY) ? "Aujourd'hui" : key(date) === key(addDays(TODAY, 1)) ? 'Demain' : fmtDay(date) + (hol ? ' · férié' : firstSun(date) ? ' · 1er dim.' : '');
   const list = L.results;
 
-  const rowProps = (p) => ({ p, photos: photos[p.id], width, onOpen: openId, sub: travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : ''), st2: L.hoursStatus(p), fit: L.ageFit(p), price: L.priceLabel(p), f1: L.f1Today(p) });
+  const rowProps = (p) => ({ p, photos: photos[p.id], width, onOpen: openId, fav: favs.indexOf(p.id) >= 0, onFav: toggleFav, sub: travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : ''), st2: L.hoursStatus(p), fit: L.ageFit(p), price: L.priceLabel(p), f1: L.f1Today(p) });
 
   /* ----- Explorer ----- */
   const header = (
@@ -372,6 +464,12 @@ function Main() {
         {W ? <Text style={[s.label, { color: rain ? '#1F4FC2' : C.muted }]}>{(W.rain >= 60 ? 'Pluie probable (' + W.rain + ' %)' : W.rain >= 30 ? 'Averses possibles (' + W.rain + ' %)' : 'Temps sec') + ' · ' + W.temp + '°'}</Text> : null}
       </View>
       {rain ? <View style={s.rainBox}><Text style={{ fontWeight: '700', color: '#1F4FC2' }}>Plan B pluie activé</Text><Text style={{ fontSize: 13, color: '#1F4FC2' }}>Les sorties à l’abri passent en premier.</Text></View> : null}
+      {!q && list.length > 8 ? <View style={{ gap: 18 }}>
+        <Carousel title={'Gratuit ' + (key(date) === key(TODAY) ? "aujourd'hui" : 'ce jour-là')} items={list.filter((p) => L.isFree(p)).slice(0, 10)} photos={photos} L={L} onOpen={openId} />
+        <Carousel title={rain ? 'À l’abri de la pluie' : 'À l’abri'} items={list.filter((p) => p.io === 'Intérieur').slice(0, 10)} photos={photos} L={L} onOpen={openId} />
+        <Carousel title="À l’agenda" items={list.filter((p) => p.evt).slice(0, 10)} photos={photos} L={L} onOpen={openId} />
+        <Text style={[s.headline, { fontSize: 20 }]}>Tout, du plus proche au plus loin</Text>
+      </View> : null}
       {!fam ? <Pressable style={s.nudge} onPress={() => setSheet('fam')}><Text style={{ fontWeight: '700', fontSize: 15 }}>Ajoute l’âge de tes enfants</Text><Text style={{ fontSize: 13, color: '#4A3A00' }}>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</Text></Pressable> : null}
     </View>
   );
@@ -406,7 +504,7 @@ function Main() {
       <View style={s.sheet}>
         <Pressable onPress={() => setFull(!full)} style={{ alignItems: 'center', paddingVertical: 8 }} accessibilityLabel={full ? 'Afficher la liste' : 'Afficher la carte en grand'}><View style={s.grab} /></Pressable>
         <FlatList data={list} keyExtractor={(p) => p.id} renderItem={({ item }) => <Row {...rowProps(item)} />}
-          ListHeaderComponent={header} ListEmptyComponent={empty}
+          ListHeaderComponent={header} ListEmptyComponent={empty} onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 20 }}
           ListFooterComponent={<Text style={[s.banner, { marginTop: 14 }]}>Version de test. Photos : Wikimedia Commons et Que faire à Paris (auteur dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu.</Text>}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
           initialNumToRender={5} maxToRenderPerBatch={5} windowSize={7} removeClippedSubviews />
@@ -448,7 +546,7 @@ function Main() {
         </View>
       </View>
       <View style={s.stats}>
-        <Stat n={favs.length} l="Favoris" /><View style={s.statSep} /><Stat n={fam ? fam.kids.length : 0} l="Enfants" /><View style={s.statSep} /><Stat n={L.results.length} l="Sorties dispo" />
+        <Stat n={favs.length} l="Favoris" /><View style={s.statSep} /><Stat n={fam ? fam.kids.length : 0} l="Enfants" /><View style={s.statSep} /><Stat n={places.length} l="Lieux et sorties" />
       </View>
       <Group title="Ma famille">
         <SetRow label="Qui vient ?" value={fam ? famText(fam) : 'À compléter'} onPress={() => setSheet('fam')} />
@@ -462,15 +560,27 @@ function Main() {
         </View>
         <SetRow label="Idées du samedi soir" sub="Les bons plans du dimanche, la veille" right={<Switch value={!!prefs.notif} onValueChange={(v) => savePrefs({ ...prefs, notif: v })} trackColor={{ true: C.accent }} />} last />
       </Group>
+      <Group title="Zone de recherche">
+        <View style={[s.seg, { margin: 12 }]}>
+          {[['paris', 'Paris'], ['pc', 'Petite couronne'], ['idf', 'Île-de-France']].map((m) => <Pressable key={m[0]} style={[s.segB, (prefs.zone || 'idf') === m[0] && s.segOn]} onPress={() => savePrefs({ ...prefs, zone: m[0] })}><Text style={[s.segT, (prefs.zone || 'idf') === m[0] && { fontWeight: '700' }]}>{m[1]}</Text></Pressable>)}
+        </View>
+      </Group>
+      <Group title="Accessibilité">
+        <SetRow label="Poussette ou fauteuil" sub="Masque les lieux signalés sans accès" right={<Switch value={!!prefs.pmr} onValueChange={(v) => savePrefs({ ...prefs, pmr: v })} trackColor={{ true: C.accent }} />} last />
+      </Group>
+      <Group title="Notifications">
+        <SetRow label="Nouveautés près de chez moi" sub="Expos et ateliers qui ouvrent à moins de 20 min" right={<Switch value={!!prefs.news} onValueChange={(v) => savePrefs({ ...prefs, news: v })} trackColor={{ true: C.accent }} />} last />
+      </Group>
       <Group title="Compte">
         <SetRow label="Se connecter avec Apple" sub="Favoris et famille sur tous tes appareils" value="Bientôt" dim />
         <SetRow label="Inviter un proche" onPress={() => Share.share({ message: 'Je trouve nos sorties en famille avec On sort : https://devbl770.github.io/on-sort/' })} last />
       </Group>
       <Group title="Aide">
         <SetRow label="Proposer une sortie" onPress={() => Share.share({ message: 'Sortie à ajouter dans On sort : ' })} />
+        <SetRow label="Confidentialité" sub="Prénom, famille et favoris restent sur ce téléphone" />
         <SetRow label="Effacer mes données" danger onPress={wipe} last />
       </Group>
-      <Text style={[s.rowSub, { textAlign: 'center', lineHeight: 18 }]}>On sort · version de test{'\n'}Agenda : Que faire à Paris (Ville de Paris) · Photos : Wikimedia Commons · Carte : Apple Plans{'\n'}Météo : Open-Meteo (CC BY 4.0) · Toilettes : Ville de Paris{'\n'}Tarifs et horaires indicatifs</Text>
+      <Text style={[s.rowSub, { textAlign: 'center', lineHeight: 18 }]}>On sort · version de test{'\n'}Agenda : Que faire à Paris (Ville de Paris) · Photos : Wikimedia Commons · Carte : Apple Plans{'\n'}Météo : Open-Meteo (CC BY 4.0) · Toilettes : Ville de Paris{'\n'}Lieux Île-de-France : © contributeurs OpenStreetMap (ODbL){'\n'}Tarifs et horaires indicatifs</Text>
     </ScrollView>
   );
 
@@ -480,22 +590,25 @@ function Main() {
     return (
       <Modal visible animationType="slide" onRequestClose={() => setOpen(null)}>
         <SafeAreaView style={s.fill}>
-          <View style={s.ovtop}>
+          <ScrollView contentContainerStyle={{ paddingBottom: 16, gap: 14 }}>
+            <View>
+              {a && a.length ? <Gallery photos={a} width={width} full /> : <Pic p={p} a={a} w={width} h={300} radius={0} />}
+          <View style={[s.ovtop, { position: 'absolute', top: 10, left: 0, right: 0, zIndex: 5 }]}>
             <Pressable style={s.round} onPress={() => setOpen(null)} accessibilityLabel="Retour"><Text style={{ fontSize: 20, fontWeight: '700' }}>‹</Text></Pressable>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Pressable style={s.round} onPress={() => Share.share({ message: 'On y va ? ' + p.name + ' (' + p.area + '), ' + fmtDay(date) + '. Trouvé sur On sort.' })} accessibilityLabel="Partager"><Text style={{ fontSize: 17 }}>↗︎</Text></Pressable>
               <Pressable style={s.round} onPress={() => toggleFav(p.id)} accessibilityLabel={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}><Text style={{ fontSize: 18, color: fav ? C.accent : C.ink }}>{fav ? '♥' : '♡'}</Text></Pressable>
             </View>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-            {a && a.length ? <Gallery photos={a} width={width - 32} /> : <View style={{ height: 210, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: (ILL[p.id] || ['#F2F2F0'])[0] }}><Ill id={p.id} size={210} /></View>}
+            </View>
+            <View style={{ paddingHorizontal: 16, gap: 14 }}>
             <Text style={[s.headline, { fontSize: 28 }]}>{p.name}</Text>
             <Text style={s.label}>{p.area + ' · ' + travel(L.km(p)) + ' depuis ' + L.here[0]}</Text>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}><CatTag p={p} /><Tag>{ageText(p)}</Tag><Tag>{p.io}</Tag>{p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}{p.offer ? <Tag bg={C.accent}>{'−' + p.offer + ' % On sort'}</Tag> : null}</View>
             {!fit.all ? <Text style={{ color: C.accentInk, fontWeight: '600' }}>{'Pas adapté à ' + fit.miss.map((x) => (x ? x + ' ans' : 'bébé')).join(' ni à ')}</Text> : null}
             {p.desc ? <Text style={{ fontSize: 15, lineHeight: 22 }}>{p.desc}</Text> : null}
             <View style={s.facts}>
-              <Fact k={p.evt ? 'Dates' : fmtDay(date)} v={p.evt ? evDates(p, date) : op ? (st2 ? st2.t : 'Ouvert · ' + p.hours) : 'Fermé ce jour-là'} vc={op ? (st2 ? st2.c : C.green) : C.accentInk} />
+              <Fact k={p.evt ? 'Dates' : fmtDay(date)} v={p.evt ? evDates(p, date) : op ? (st2 ? st2.t : hoursFor(p, date)) : 'Fermé ce jour-là'} vc={op ? (st2 ? st2.c : C.green) : C.accentInk} />
               {L.f1Today(p) ? <Fact k="1er dimanche du mois" v={'Gratuit pour tous' + (p.f1.resa ? ' · réservation ' + p.f1.resa : '')} vc={C.green} /> : null}
               {fam && ft != null ? <Fact k={'Pour vous (' + famText(fam) + ')'} v={ft === 0 ? 'Gratuit' : eur(ft)} /> : null}
               {!p.evt ? <Fact k="Adulte" v={e.ad == null ? 'Voir le site' : e.ad === 0 ? 'Gratuit' : eur(e.ad)} /> : null}
@@ -504,7 +617,9 @@ function Main() {
             </View>
             <Nearby p={p} places={places} onOpen={(id) => setOpen(id)} />
             {p.url ? <Pressable onPress={() => Linking.openURL(p.url)}><Text style={{ textDecorationLine: 'underline', color: C.muted }}>Voir le programme sur Que faire à Paris</Text></Pressable> : null}
-            <Text style={s.banner}>Infos de test, indicatives.</Text>
+            {p.web ? <Pressable onPress={() => Linking.openURL(p.web)}><Text style={{ textDecorationLine: 'underline', color: C.muted }}>Site du lieu</Text></Pressable> : null}
+            <Text style={s.banner}>{p.osm ? 'Lieu issu d’OpenStreetMap (© contributeurs OpenStreetMap). Horaires et tarifs à vérifier sur le site du lieu.' : 'Infos de test, indicatives.'}</Text>
+            </View>
           </ScrollView>
           <View style={s.foot}>
             {op && e.ad != null && e.en != null && (e.ad > 0 || e.en > 0) ? <Pressable style={[s.cta, { flex: 1.3 }]} onPress={() => setBook({ id: p.id, ad: fam ? fam.ad : 2, en: fam ? fam.kids.filter((k) => !(p.free3 && k < 3)).length : 2 })}><Text style={s.ctaT}>{'Réserver' + (p.offer ? ' · −' + p.offer + ' %' : '')}</Text></Pressable> : null}
@@ -604,28 +719,58 @@ function Main() {
     </SafeAreaView>
   );
 }
-const Row = memo(function Row({ p, photos: a, width, onOpen, sub, st2, fit, price, f1 }) {
+function CatTile({ p, size, radius = 16 }) { const t = TINT[p.cat] || ['#F2F2F0', '#0B0B0B']; return <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: t[0], alignItems: 'center', justifyContent: 'center', padding: 4 }}><Text style={{ color: t[1], fontWeight: '900', fontSize: size > 100 ? 26 : 12, textAlign: 'center' }} numberOfLines={2}>{p.cat}</Text></View>; }
+function Pic({ p, a, w, h, radius = 16 }) {
+  if (a && a.length) return <Image source={{ uri: a[0].t }} resizeMode="cover" style={{ width: w, height: h, borderRadius: radius, backgroundColor: C.soft }} />;
+  if (ILL[p.id]) return <View style={{ width: w, height: h, borderRadius: radius, overflow: 'hidden', backgroundColor: ILL[p.id][0], alignItems: 'center', justifyContent: 'center' }}><Ill id={p.id} size={Math.min(w, h)} /></View>;
+  const t = TINT[p.cat] || ['#F2F2F0', '#0B0B0B'];
+  return <View style={{ width: w, height: h, borderRadius: radius, backgroundColor: t[0], alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: t[1], fontWeight: '900', fontSize: 22 }}>{p.cat}</Text></View>;
+}
+function Carousel({ title, items, photos, L, onOpen }) {
+  if (items.length < 3) return null;
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={[s.headline, { fontSize: 20 }]}>{title}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+        {items.map((p) => (
+          <Pressable key={p.id} onPress={() => { onOpen(p.id); }} style={{ width: 200 }} onLayout={() => { if (!photos[p.id]) lazyPhoto(p); }}>
+            <View><Pic p={p} a={photos[p.id]} w={200} h={130} /><View style={s.badge}><Text style={s.badgeT}>{L.shortPrice(p)}</Text></View></View>
+            <Text style={[s.rowTitle, { marginTop: 6 }]} numberOfLines={1}>{p.name}</Text>
+            <Text style={s.rowSub} numberOfLines={1}>{travel(L.km(p))}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+const Row = memo(function Row({ p, photos: a, width, onOpen, fav, onFav, sub, st2, fit, price, f1 }) {
+  const has = a && a.length;
   return (
     <Pressable onPress={() => onOpen(p.id)} style={[s.card, st2 && st2.closed && { opacity: 0.55 }]}>
-      {a && a.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.8 + 6} decelerationRate="fast" contentContainerStyle={{ gap: 6 }}>
-          {a.map((ph, i) => <Pressable key={i} onPress={() => onOpen(p.id)}><Image source={{ uri: ph.t }} resizeMode="cover" style={{ width: a.length === 1 ? width - 32 : width * 0.8, height: 190, borderRadius: 16, backgroundColor: C.soft }} /></Pressable>)}
-        </ScrollView>
+      {has ? (
+        <View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.8 + 6} decelerationRate="fast" contentContainerStyle={{ gap: 6 }}>
+            {a.map((ph, i) => <Pressable key={i} onPress={() => onOpen(p.id)}><Image source={{ uri: ph.t }} resizeMode="cover" style={{ width: a.length === 1 ? width - 32 : width * 0.8, height: 200, borderRadius: 18, backgroundColor: C.soft }} /></Pressable>)}
+          </ScrollView>
+          <View style={[s.badge, { top: 12, left: 12 }]}><Text style={s.badgeT}>{price}</Text></View>
+          <Pressable onPress={() => onFav(p.id)} style={s.heart} hitSlop={8} accessibilityLabel={fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}><Text style={{ fontSize: 18, color: fav ? C.accent : C.ink }}>{fav ? '♥' : '♡'}</Text></Pressable>
+        </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-        {!(a && a.length) ? <View style={{ width: 58, height: 58, borderRadius: 16, overflow: 'hidden', backgroundColor: (ILL[p.id] || ['#FFE1EC'])[0] }}><Ill id={p.id} size={58} /></View> : null}
+        {!has ? <Pic p={p} a={a} w={64} h={64} /> : null}
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={s.rowTitle} numberOfLines={1}>{p.name}</Text>
+          <Text style={[s.rowTitle, { fontSize: 16 }]} numberOfLines={1}>{p.name}</Text>
           <Text style={s.rowSub} numberOfLines={1}>{sub}{st2 ? <Text style={{ color: st2.c, fontWeight: '600' }}>{' · ' + st2.t}</Text> : (!p.evt ? ' · ' + ageText(p) : '')}</Text>
           {p.offer ? <Text style={s.deal}>−{p.offer} % avec On sort</Text> : null}
           <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
             <CatTag p={p} />
             {f1 ? <Tag bg="#DFF5D3" fg={C.green}>Gratuit ce 1er dimanche</Tag> : null}
             {p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}
+            {p.wheel === 'yes' ? <Tag>Accès fauteuil</Tag> : null}
             {!fit.all ? <Tag>{'Pas pour ' + fit.miss.map((x) => x || 'bébé').join(', ') + (fit.miss.some((x) => x > 0) ? ' ans' : '')}</Tag> : null}
           </View>
         </View>
-        <Text style={s.price}>{price}</Text>
+        {!has ? <Text style={s.price}>{price}</Text> : null}
       </View>
     </Pressable>
   );
@@ -668,17 +813,17 @@ function SetRow({ label, sub, value, onPress, right, last, danger, dim }) {
   return onPress ? <Pressable onPress={onPress}>{body}</Pressable> : body;
 }
 function Fact({ k, v, vc, last }) { return <View style={[s.fact, last && { borderBottomWidth: 0 }]}><Text style={{ color: C.muted, flex: 1 }}>{k}</Text><Text style={{ fontWeight: '600', color: vc || C.ink, textAlign: 'right', flex: 1 }}>{v}</Text></View>; }
-function Gallery({ photos, width }) {
-  const [i, setI] = useState(0);
+function Gallery({ photos, width, full }) {
+  const [i, setI] = useState(0); const H = full ? 320 : 260;
   return (
     <View style={{ gap: 6 }}>
-      <View style={{ height: 260, borderRadius: 22, overflow: 'hidden', backgroundColor: C.soft }}>
+      <View style={{ height: H, borderRadius: full ? 0 : 22, overflow: 'hidden', backgroundColor: C.soft }}>
         <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(e) => setI(Math.round(e.nativeEvent.contentOffset.x / width))}>
-          {photos.map((ph, j) => <Image key={j} source={{ uri: ph.t }} style={{ width, height: 260 }} />)}
+          {photos.map((ph, j) => <Image key={j} source={{ uri: ph.t }} style={{ width, height: H }} />)}
         </ScrollView>
         <View style={[s.galBadge, { right: 12 }]}><Text style={s.tagT}>{(i + 1) + ' / ' + photos.length}</Text></View>
       </View>
-      <Text style={{ fontSize: 11, color: C.muted }} onPress={() => Linking.openURL(photos[i].u)}>{'Photo : ' + photos[i].a + ' · ' + photos[i].l + (photos[i].l === 'Ville de Paris' ? '' : ' · Wikimedia Commons')}</Text>
+      <Text style={{ fontSize: 11, color: C.muted, paddingHorizontal: full ? 16 : 0 }} onPress={() => Linking.openURL(photos[i].u)}>{'Photo : ' + photos[i].a + ' · ' + photos[i].l + (photos[i].l === 'Ville de Paris' || photos[i].l === 'Wikimedia Commons' ? '' : ' · Wikimedia Commons')}</Text>
     </View>
   );
 }
@@ -753,6 +898,9 @@ const s = StyleSheet.create({
   segB: { flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   segOn: { backgroundColor: C.paper, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
   segT: { fontSize: 13, color: C.ink },
+  badge: { position: 'absolute', top: 8, left: 8, backgroundColor: C.paper, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3 },
+  badgeT: { fontSize: 12, fontWeight: '800', color: C.ink },
+  heart: { position: 'absolute', top: 10, right: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3 },
   rainBox: { padding: 12, borderRadius: 14, backgroundColor: '#DCE8FF', gap: 2 },
   galBadge: { position: 'absolute', bottom: 12, backgroundColor: C.paper, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
 });
