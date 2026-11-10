@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="On sort">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFFFFF">
+<style>html{height:100%;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>On sort</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: carte en haut, panneau blanc qui monte du bas, une seule couleur vive. Look clair assumé (pas de thème sombre). */
+:root{
+  --ink:#0B0B0B; --paper:#FFFFFF; --ground:#ECECE8; --soft:#F2F2F0; --line:#E6E6E2;
+  --muted:#5E5E5A; --accent:#FF5B2E; --accent-ink:#B8360F; --blue:#2F6BFF; --green:#D3E6CA; --water:#BBDAEE;
+  --display:"Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+a{color:inherit}
+.app{height:100%;max-width:480px;margin:0 auto;position:relative;display:flex;flex-direction:column;background:var(--paper);overflow:hidden;box-shadow:0 0 0 1px var(--line)}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+/* carte */
+.map{position:relative;flex:0 0 40%;min-height:220px;background:var(--ground);overflow:hidden}
+.map>svg{position:absolute;inset:0;width:100%;height:100%}
+.topbar{position:absolute;top:12px;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;gap:8px;z-index:3}
+.logo{height:42px;padding:0 16px;border-radius:21px;background:var(--paper);display:flex;align-items:center;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.5px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.logo i{font-style:normal;color:var(--accent)}
+.pillbtn{height:42px;padding:0 14px;border-radius:21px;background:var(--paper);box-shadow:0 2px 8px rgba(0,0,0,.12);font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.mapzoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:26px;z-index:3;display:flex;background:var(--paper);border-radius:12px;padding:3px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mapzoom button{height:34px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:600}
+.mapzoom button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.pin{cursor:pointer}
+/* panneau */
+.sheet{flex:1;min-height:0;margin-top:-16px;position:relative;z-index:2;background:var(--paper);border-radius:18px 18px 0 0;box-shadow:0 -4px 18px rgba(0,0,0,.08);display:flex;flex-direction:column}
+.grab{align-self:center;width:36px;height:5px;border-radius:3px;background:#D6D6D2;margin:8px 0 4px}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:4px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.search{display:flex;align-items:center;gap:8px;height:54px;border-radius:14px;background:var(--soft);padding:0 6px 0 14px}
+.search input{flex:1;min-width:0;border:none;background:transparent;font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.3px;color:var(--ink);outline:none}
+.search input::placeholder{color:var(--ink)}
+.whenbtn{height:40px;padding:0 12px;border-radius:20px;background:var(--paper);font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:0 max(16px,env(safe-area-inset-left,0px))}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;height:36px;padding:0 13px;border-radius:10px;border:1px solid #DADAD6;background:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
+.chip.hol{border-color:#F2B49F;color:var(--accent-ink);font-weight:600}
+.chip.hol[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.label{font-size:13px;font-weight:600;color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.tile{width:58px;height:58px;border-radius:16px;flex:0 0 auto;overflow:hidden;display:block}
+.tile svg{display:block;width:100%;height:100%}
+.map{touch-action:none;transition:flex-basis .25s ease}
+.mapctl{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:76px;z-index:3;display:flex;flex-direction:column;background:var(--paper);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);overflow:hidden}
+.mapctl button{width:44px;height:42px;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.mapctl button+button{border-top:1px solid var(--line)}
+.grabbtn{align-self:stretch;height:26px;display:flex;align-items:center;justify-content:center;touch-action:none}
+.grabbtn .grab{margin:0}
+.view.full .map{flex:1 1 auto}
+.view.full .sheet{flex:0 0 auto;max-height:122px;overflow:hidden}
+.view.full .scroll{overflow:hidden}
+.scroll>*{flex-shrink:0}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.credit{font-size:11px;color:var(--muted);line-height:1.4;margin-top:-8px}
+.credit a{color:var(--muted)}
+.sum{display:flex;gap:8px;flex-wrap:wrap}
+.spill{height:40px;padding:0 13px;border-radius:20px;background:var(--soft);font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spill.hol{background:#FFE1D6;color:#A8300C}
+.spill.nudge{background:var(--ink);color:var(--paper)}
+.nudgecard{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px;border-radius:16px;background:#FFF0B8}
+.nudgecard b{font-size:15px}.nudgecard span{font-size:13px;line-height:1.4;color:#4A3A00}
+.dimrow{opacity:.55}
+.cats{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:2px max(16px,env(safe-area-inset-left,0px))}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:0 0 auto;width:88px;border-radius:18px;padding:0 0 9px;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--ink)}
+.cat svg{width:88px;height:66px;display:block}
+.cat[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--ink)}
+.rowmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rowtitle{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowsub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowdeal{font-size:12px;font-weight:700;color:var(--accent-ink)}
+.price{font-size:15px;font-weight:700;white-space:nowrap;text-align:right}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;font-size:11px;font-weight:700;background:var(--soft)}
+.tag.new{background:var(--ink);color:var(--paper)}
+.empty{padding:28px 8px;text-align:center;color:var(--muted);line-height:1.5}
+.banner{font-size:12px;color:var(--muted);background:var(--soft);border-radius:10px;padding:8px 10px;line-height:1.4}
+.headline{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.6px;margin:0;line-height:1.05;text-wrap:balance}
+/* nav */
+nav.tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line);background:var(--paper);padding:0 max(0px,env(safe-area-inset-right,0px)) 0 max(0px,env(safe-area-inset-left,0px))}
+nav.tabs button{height:56px;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+nav.tabs button[aria-current="page"]{color:var(--ink)}
+nav.tabs button[aria-current="page"] .dot{background:var(--accent)}
+.dot{width:6px;height:6px;border-radius:3px;background:transparent}
+.plain{flex:1;min-height:0;overflow-y:auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.bigtitle{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-1px;margin:0;line-height:1}
+/* overlays */
+.overlay{position:absolute;inset:0;z-index:20;background:var(--paper);display:flex;flex-direction:column;animation:up .22s ease-out}
+.overlay.dim{background:rgba(11,11,11,.45);justify-content:flex-end}
+@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.overlay{animation:none}}
+.ovtop{display:flex;justify-content:space-between;align-items:center;padding:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.round{width:44px;height:44px;border-radius:22px;background:var(--soft);display:flex;align-items:center;justify-content:center}
+.ovbody{flex:1;min-height:0;overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.ovfoot{padding:12px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);display:flex;gap:10px;background:var(--paper)}
+.cta{flex:1;height:56px;border-radius:14px;background:var(--ink);color:var(--paper);font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.cta[disabled]{opacity:.35;cursor:default}
+.ghost{height:56px;padding:0 18px;border-radius:14px;background:var(--soft);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.hero{height:210px;border-radius:22px;overflow:hidden;position:relative;flex:0 0 auto}
+.hero svg{width:100%;height:100%;display:block;overflow:visible}
+.hero span{position:absolute;left:12px;bottom:12px;background:var(--paper);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700}
+.facts{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px}
+.fact{display:flex;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.fact:last-child{border-bottom:none}
+.fact span:first-child{color:var(--muted)}
+.fact span:last-child{font-weight:600;text-align:right}
+.panel{background:var(--paper);border-radius:18px 18px 0 0;max-height:80%;display:flex;flex-direction:column;animation:up .22s ease-out}
+.pick{width:100%;text-align:left;padding:14px 0;border-bottom:1px solid var(--line);font-size:16px;font-weight:600;display:flex;justify-content:space-between}
+.stepper{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+.stepper div{display:flex;align-items:center;gap:14px}
+.stepper button{width:44px;height:44px;border-radius:22px;border:1px solid #DADAD6;font-size:20px}
+.ticket{background:var(--accent)}
+.tcard{background:var(--paper);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid2 small{display:block;font-size:12px;color:var(--muted)}
+.grid2 b{font-size:15px}
+.toast{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:40;white-space:nowrap}
+input[type=date]{height:48px;border-radius:12px;border:1px solid #DADAD6;padding:0 12px;font:inherit;font-size:16px;width:100%;box-sizing:border-box;background:var(--paper);color:var(--ink)}
+</style>
+
+<div class="app" id="app">
+  <div class="view" id="view"></div>
+  <nav class="tabs" aria-label="Navigation principale">
+    <button data-tab="explore" aria-current="page"><span class="dot"></span>Explorer</button>
+    <button data-tab="favs"><span class="dot"></span>Mes sorties</button>
+  </nav>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- Données de test (tarifs et horaires indicatifs) ---------- */
+var ALL=[0,1,2,3,4,5,6], NOMON=[0,2,3,4,5,6], NOTUE=[0,1,3,4,5,6];
+var P=[
+ {id:"acclim",name:"Jardin d'Acclimatation",area:"Bois de Boulogne · 16e",lat:48.8785,lng:2.2640,cat:"Loisirs",io:"Plein air",a:[0,12],ad:7,en:7,note:"Gratuit moins de 3 ans · attractions en supplément",days:ALL,hours:"10h – 19h",offer:10,desc:"Manèges, animaux de la ferme, aires de jeux et rivière enchantée, au bord du Bois de Boulogne."},
+ {id:"menagerie",name:"Ménagerie du Jardin des Plantes",area:"5e",lat:48.8445,lng:2.3600,cat:"Animaux",io:"Plein air",a:[0,99],ad:13,en:10,note:"Gratuit moins de 3 ans",days:ALL,hours:"9h – 17h",offer:10,desc:"L'un des plus vieux zoos du monde : pandas roux, orangs-outans, reptiles, au cœur du Jardin des Plantes."},
+ {id:"zoo",name:"Parc zoologique de Paris",area:"Bois de Vincennes · 12e",lat:48.8325,lng:2.4155,cat:"Animaux",io:"Plein air",a:[0,99],ad:22,en:17,note:"Gratuit moins de 3 ans",days:ALL,hours:"10h – 17h",offer:0,desc:"Girafes, lions, grande serre tropicale : prévoir une demi-journée."},
+ {id:"citeenfants",name:"Cité des enfants",area:"Cité des sciences · 19e",lat:48.8957,lng:2.3878,cat:"Sciences",io:"Intérieur",a:[2,12],ad:12,en:12,note:"Séances de 1h30, réservation conseillée",days:NOMON,hours:"10h – 18h",hc:true,offer:0,desc:"Deux espaces d'expériences à manipuler : 2-7 ans et 5-12 ans."},
+ {id:"evolution",name:"Grande Galerie de l'Évolution",area:"5e",lat:48.8422,lng:2.3562,cat:"Musée",io:"Intérieur",a:[3,99],ad:13,en:null,note:"Tarif enfant : voir le site",days:NOTUE,hours:"10h – 18h",hc:true,offer:0,desc:"La caravane des animaux naturalisés, une galerie des enfants et des espèces disparues."},
+ {id:"petitpalais",name:"Petit Palais",area:"8e",lat:48.8661,lng:2.3147,cat:"Musée",io:"Intérieur",a:[4,99],ad:0,en:0,note:"Collections permanentes gratuites",days:NOMON,hours:"10h – 18h",hc:true,offer:0,desc:"Un palais doré, un jardin intérieur et des livrets-jeux pour les enfants."},
+ {id:"branly",name:"Musée du quai Branly",area:"7e",lat:48.8609,lng:2.2978,cat:"Musée",io:"Intérieur",a:[4,99],ad:14,en:0,note:"Gratuit moins de 18 ans",days:NOMON,hours:"10h30 – 19h",hc:true,offer:0,desc:"Masques, totems et instruments du monde entier, avec un jardin à explorer."},
+ {id:"armee",name:"Musée de l'Armée",area:"Invalides · 7e",lat:48.8556,lng:2.3125,cat:"Musée",io:"Intérieur",a:[6,99],ad:15,en:0,note:"Gratuit moins de 18 ans",days:ALL,hours:"10h – 18h",hc:true,offer:0,desc:"Armures de chevaliers et tombeau de Napoléon : un classique des 7-12 ans."},
+ {id:"artsmetiers",name:"Musée des Arts et Métiers",area:"3e",lat:48.8665,lng:2.3555,cat:"Sciences",io:"Intérieur",a:[6,99],ad:12,en:0,note:"Gratuit moins de 18 ans",days:NOMON,hours:"10h – 18h",hc:true,offer:0,desc:"Avions, automates et le pendule de Foucault dans une ancienne église."},
+ {id:"grandpalais",name:"Palais des enfants · Grand Palais",area:"8e",lat:48.8661,lng:2.3125,cat:"Loisirs",io:"Intérieur",a:[2,10],ad:null,en:null,note:"Tarifs : voir le site",days:NOMON,hours:"Horaires : voir le site",hc:true,isNew:true,offer:0,desc:"Un espace dédié aux 2-10 ans dans le Grand Palais rénové."},
+ {id:"philharmonie",name:"Espace enfants · Philharmonie",area:"La Villette · 19e",lat:48.8919,lng:2.3940,cat:"Musique",io:"Intérieur",a:[4,10],ad:null,en:null,note:"Tarifs : voir le site",days:NOMON,hours:"Horaires : voir le site",hc:true,isNew:true,offer:0,desc:"Un nouvel espace de 1 000 m² pour découvrir la musique en jouant, pour les 4-10 ans."},
+ {id:"museeherbe",name:"Musée en Herbe",area:"1er",lat:48.8620,lng:2.3412,cat:"Musée",io:"Intérieur",a:[2,12],ad:null,en:null,note:"Tarifs : voir le site",days:ALL,hours:"10h – 19h",hc:true,offer:10,desc:"Expositions d'art pensées pour les enfants, avec baby-visites dès 2 ans."},
+ {id:"aquarium",name:"Aquarium de Paris",area:"Trocadéro · 16e",lat:48.8620,lng:2.2905,cat:"Animaux",io:"Intérieur",a:[0,99],ad:null,en:null,note:"Tarifs : voir le site",days:ALL,hours:"10h – 19h",offer:0,desc:"Requins, méduses et bassin tactile, juste en face de la tour Eiffel."},
+ {id:"buttes",name:"Parc des Buttes-Chaumont",area:"19e",lat:48.8809,lng:2.3828,cat:"Parc",io:"Plein air",a:[0,99],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"7h – 20h",offer:0,desc:"Falaises, pont suspendu, grotte et aires de jeux : le parc le plus spectaculaire de Paris."},
+ {id:"bercy",name:"Parc de Bercy",area:"12e",lat:48.8355,lng:2.3835,cat:"Parc",io:"Plein air",a:[0,12],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"8h – 19h",offer:0,desc:"Grandes pelouses, potager, aires de jeux et skatepark."},
+ {id:"luxembourg",name:"Jardin du Luxembourg",area:"6e",lat:48.8462,lng:2.3372,cat:"Parc",io:"Plein air",a:[0,12],ad:0,en:0,note:"Marionnettes et manèges payants",days:ALL,hours:"8h – 17h",offer:0,desc:"Voiliers sur le bassin, théâtre de marionnettes et grande aire de jeux."},
+ {id:"villette",name:"Parc de la Villette",area:"19e",lat:48.8938,lng:2.3920,cat:"Parc",io:"Plein air",a:[0,99],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"Ouvert en continu",offer:0,desc:"Jardins à thème, toboggan dragon et grands espaces au bord du canal."},
+ {id:"tuileries",name:"Jardin des Tuileries",area:"1er",lat:48.8635,lng:2.3275,cat:"Parc",io:"Plein air",a:[0,99],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"7h30 – 19h30",offer:0,desc:"Trampolines, voiliers et grande allée entre le Louvre et la Concorde."},
+ {id:"monceau",name:"Parc Monceau",area:"8e",lat:48.8797,lng:2.3088,cat:"Parc",io:"Plein air",a:[0,10],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"7h – 20h",offer:0,desc:"Petit parc élégant avec manège, aire de jeux et folies à explorer."},
+ {id:"montsouris",name:"Parc Montsouris",area:"14e",lat:48.8222,lng:2.3380,cat:"Parc",io:"Plein air",a:[0,12],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"8h – 19h",offer:0,desc:"Lac avec canards, cascade et pelouses ouvertes."},
+ {id:"citroen",name:"Parc André-Citroën",area:"15e",lat:48.8410,lng:2.2750,cat:"Parc",io:"Plein air",a:[0,12],ad:0,en:0,note:"Ballon captif payant",days:ALL,hours:"8h – 19h",offer:0,desc:"Jets d'eau où courir l'été, serres et grandes pelouses."},
+ {id:"belleville",name:"Parc de Belleville",area:"20e",lat:48.8715,lng:2.3850,cat:"Parc",io:"Plein air",a:[3,12],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"8h – 19h",offer:0,desc:"Belvédère sur Paris et l'une des plus grandes aires de jeux en bois de la ville."},
+ {id:"floral",name:"Parc floral de Paris",area:"Bois de Vincennes · 12e",lat:48.8380,lng:2.4430,cat:"Parc",io:"Plein air",a:[0,12],ad:0,en:0,note:"Payant certains jours d'été",days:ALL,hours:"9h30 – 17h",offer:0,desc:"Immense aire de jeux, mini-golf et jardins."},
+ {id:"ferme",name:"Ferme de Paris",area:"Bois de Vincennes · 12e",lat:48.8205,lng:2.4545,cat:"Animaux",io:"Plein air",a:[0,12],ad:0,en:0,note:"Entrée libre",days:[0,6],hours:"Week-end, après-midi",offer:0,desc:"Vaches, cochons, moutons et potager : une vraie ferme dans Paris."},
+ {id:"daumesnil",name:"Barques du lac Daumesnil",area:"Bois de Vincennes · 12e",lat:48.8330,lng:2.4100,cat:"Loisirs",io:"Plein air",a:[4,99],ad:null,en:null,note:"Location à l'heure, en saison",days:ALL,months:[3,4,5,6,7,8,9,10],hours:"Selon météo",offer:0,desc:"Ramer en famille autour des îles du lac."},
+ {id:"versailles",name:"Château de Versailles",area:"Versailles · 78",lat:48.8049,lng:2.1204,cat:"Château",io:"Mixte",a:[6,99],ad:21,en:0,note:"Gratuit moins de 18 ans · jardins gratuits hors spectacles",days:NOMON,hours:"9h – 17h30",hc:true,offer:0,desc:"Le château, puis les jardins et le Hameau de la Reine pour se dépenser."},
+ {id:"sceaux",name:"Domaine de Sceaux",area:"Sceaux · 92",lat:48.7735,lng:2.2990,cat:"Parc",io:"Plein air",a:[0,99],ad:0,en:0,note:"Entrée libre",days:ALL,hours:"8h – 17h",offer:0,desc:"Grand canal, cascades et pique-nique au pied du château."},
+ {id:"saintcloud",name:"Domaine national de Saint-Cloud",area:"Saint-Cloud · 92",lat:48.8400,lng:2.2120,cat:"Parc",io:"Plein air",a:[0,99],ad:0,en:0,note:"Entrée libre à pied",days:ALL,hours:"7h30 – 20h",offer:0,desc:"460 hectares de parc et une vue sur tout Paris."},
+ {id:"cergy",name:"Île de loisirs de Cergy-Pontoise",area:"Cergy · 95",lat:49.0260,lng:2.0400,cat:"Loisirs",io:"Plein air",a:[4,99],ad:0,en:null,note:"Entrée libre · activités payantes",days:ALL,hours:"Selon activités",offer:0,desc:"Étangs, accrobranche, téléski nautique et baignade l'été."},
+ {id:"disney",name:"Disneyland Paris",area:"Marne-la-Vallée · 77",lat:48.8722,lng:2.7758,cat:"Loisirs",io:"Mixte",a:[3,99],ad:null,en:null,note:"Prix variable selon la date",days:ALL,hours:"Voir le site",offer:0,desc:"Deux parcs à thèmes, à réserver à l'avance."},
+ {id:"asterix",name:"Parc Astérix",area:"Plailly · 60",lat:49.1341,lng:2.5710,cat:"Loisirs",io:"Plein air",a:[3,99],ad:null,en:null,note:"Prix variable selon la date",days:ALL,months:[4,5,6,7,8,9,10],hours:"Saison d'avril à début novembre",offer:0,desc:"Montagnes russes et villages gaulois, à environ 35 km au nord de Paris."},
+ {id:"miniature",name:"France Miniature",area:"Élancourt · 78",lat:48.7713,lng:1.9693,cat:"Loisirs",io:"Plein air",a:[3,12],ad:null,en:null,note:"Tarifs : voir le site",days:ALL,months:[4,5,6,7,8,9,10],hours:"Saison d'avril à octobre",offer:0,desc:"Les monuments de France en miniature, plus quelques attractions."}
+];
+P.forEach(function(p){p.free3=/moins de 3 ans/.test(p.note);});
+var PLACES=[
+ ["Paris 1er",48.8626,2.3363],["Paris 2e",48.8683,2.3428],["Paris 3e",48.8630,2.3600],["Paris 4e",48.8543,2.3576],["Paris 5e",48.8445,2.3500],["Paris 6e",48.8491,2.3328],["Paris 7e",48.8562,2.3121],["Paris 8e",48.8727,2.3125],["Paris 9e",48.8770,2.3375],["Paris 10e",48.8761,2.3607],["Paris 11e",48.8591,2.3800],["Paris 12e",48.8400,2.3950],["Paris 13e",48.8283,2.3623],["Paris 14e",48.8292,2.3266],["Paris 15e",48.8401,2.2930],["Paris 16e",48.8604,2.2620],["Paris 17e",48.8873,2.3067],["Paris 18e",48.8925,2.3484],["Paris 19e",48.8871,2.3848],["Paris 20e",48.8634,2.4012],
+ ["Boulogne-Billancourt",48.8397,2.2399],["Vincennes",48.8475,2.4390],["Montreuil",48.8611,2.4433],["Saint-Denis",48.9362,2.3574],["Nanterre",48.8924,2.2069],["Créteil",48.7904,2.4556],["Versailles",48.8049,2.1204]
+];
+var TINT={Parc:["#DFF5D3","#1E6B3A"],Animaux:["#FFE1D6","#A8300C"],Musée:["#EDE4FF","#5B34B8"],Sciences:["#DCE8FF","#1F4FC2"],Loisirs:["#FFF0B8","#6E4D00"],Musique:["#EDE4FF","#5B34B8"],Château:["#FFF0B8","#6E4D00"]};
+function flower(x,y,c){return '<g fill="'+c+'"><circle cx="'+x+'" cy="'+(y-5)+'" r="4.2"/><circle cx="'+(x-5)+'" cy="'+y+'" r="4.2"/><circle cx="'+(x+5)+'" cy="'+y+'" r="4.2"/><circle cx="'+x+'" cy="'+(y+5)+'" r="4.2"/></g><circle cx="'+x+'" cy="'+y+'" r="3" fill="#FFC93D"/>';}
+/* Illustrations maison, une par lieu (viewBox 64×64) */
+var ILL={
+ acclim:["#FFC93D",'<rect x="0" y="54" width="64" height="10" fill="#7BC67E"/><path d="M12 27 L32 11 L52 27Z" fill="#FF5B2E"/><path d="M32 11 L25 27 M32 11 L39 27" stroke="#fff" stroke-width="3"/><circle cx="32" cy="10" r="2.5" fill="#2F6BFF"/><rect x="12" y="27" width="40" height="4" fill="#fff"/><path d="M19 31v19M32 31v19M45 31v19" stroke="#0B0B0B" stroke-width="2"/><rect x="10" y="50" width="44" height="4" rx="2" fill="#0B0B0B"/><circle cx="19" cy="40" r="4.5" fill="#fff"/><circle cx="32" cy="44" r="4.5" fill="#2F6BFF"/><circle cx="45" cy="40" r="4.5" fill="#FF8FAB"/>'],
+ menagerie:["#9BE3C6",'<path d="M15 23 L19 9 L28 18Z M49 23 L45 9 L36 18Z" fill="#A8300C"/><ellipse cx="32" cy="35" rx="21" ry="18" fill="#E8622C"/><ellipse cx="32" cy="43" rx="11" ry="8" fill="#fff"/><ellipse cx="22" cy="31" rx="5.5" ry="4.5" fill="#fff"/><ellipse cx="42" cy="31" rx="5.5" ry="4.5" fill="#fff"/><circle cx="23" cy="32" r="2.4" fill="#0B0B0B"/><circle cx="41" cy="32" r="2.4" fill="#0B0B0B"/><ellipse cx="32" cy="40" rx="3.2" ry="2.2" fill="#0B0B0B"/>'],
+ zoo:["#FFD6A5",'<circle cx="52" cy="12" r="5" fill="#FF9F1C"/><rect x="0" y="54" width="64" height="10" fill="#7BC67E"/><rect x="25" y="20" width="10" height="35" rx="4" fill="#F5B83D"/><ellipse cx="37" cy="18" rx="11" ry="6.5" fill="#F5B83D"/><path d="M31 11v-5M38 11v-5" stroke="#7A4A12" stroke-width="2.5" stroke-linecap="round"/><circle cx="40" cy="16" r="1.9" fill="#0B0B0B"/><circle cx="29" cy="28" r="2.6" fill="#B5651D"/><circle cx="32" cy="38" r="2.6" fill="#B5651D"/><circle cx="28.5" cy="47" r="2.6" fill="#B5651D"/>'],
+ citeenfants:["#2F6BFF",'<circle cx="11" cy="14" r="1.6" fill="#fff"/><circle cx="53" cy="20" r="1.8" fill="#FFC93D"/><circle cx="49" cy="50" r="1.3" fill="#fff"/><circle cx="13" cy="46" r="1.3" fill="#FFC93D"/><path d="M32 7 C43 18 43 34 38.5 44 H25.5 C21 34 21 18 32 7Z" fill="#fff"/><circle cx="32" cy="25" r="5" fill="#9FD8F5" stroke="#0B0B0B" stroke-width="1.5"/><path d="M25.5 35 L17 46 L26 44Z M38.5 35 L47 46 L38 44Z" fill="#FF5B2E"/><path d="M27.5 44 L32 57 L36.5 44Z" fill="#FFC93D"/>'],
+ evolution:["#C9B6FF",'<rect x="0" y="54" width="64" height="10" fill="#A58BEA"/><ellipse cx="36" cy="34" rx="18" ry="13" fill="#7D7F8C"/><circle cx="19" cy="28" r="10" fill="#7D7F8C"/><path d="M11 31 C6 41 8 51 15 51" stroke="#7D7F8C" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="24" cy="27" rx="6" ry="8.5" fill="#9A9CA8"/><circle cx="16" cy="25" r="1.7" fill="#0B0B0B"/><rect x="23" y="42" width="7" height="12" rx="2" fill="#7D7F8C"/><rect x="41" y="42" width="7" height="12" rx="2" fill="#7D7F8C"/>'],
+ petitpalais:["#FFE9A8",'<rect x="9" y="34" width="46" height="20" fill="#fff"/><path d="M20 34 A12 12 0 0 1 44 34Z" fill="#E0A82E"/><rect x="31" y="14" width="2" height="9" fill="#E0A82E"/><path d="M14 38v14M20 38v14M26 38v14M38 38v14M44 38v14M50 38v14" stroke="#E6D9B8" stroke-width="2"/><path d="M29 54v-10a3 3 0 0 1 6 0v10Z" fill="#E0A82E"/><rect x="5" y="54" width="54" height="4" fill="#0B0B0B"/>'],
+ branly:["#1F7A5C",'<path d="M18 11 H46 V36 C46 49 39 57 32 57 C25 57 18 49 18 36Z" fill="#FFB547"/><path d="M18 18h28" stroke="#FF5B2E" stroke-width="3.5"/><path d="M22 25 L29 27 L22 31Z M42 25 L35 27 L42 31Z" fill="#0B0B0B"/><path d="M32 29v10" stroke="#A8300C" stroke-width="3"/><rect x="26" y="45" width="12" height="4" rx="2" fill="#A8300C"/><circle cx="8" cy="12" r="2" fill="#FFC93D"/><circle cx="56" cy="52" r="2" fill="#FFC93D"/>'],
+ armee:["#D7E3FF",'<path d="M34 10 C44 3 53 9 50 18" stroke="#FF3B3B" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M18 31 C18 18 24 12 32 12 C40 12 46 18 46 31 V51 H18Z" fill="#9AA3B5"/><rect x="22" y="28" width="20" height="4" fill="#0B0B0B"/><path d="M32 34v17" stroke="#6B7385" stroke-width="2"/><circle cx="26" cy="43" r="1.5" fill="#6B7385"/><circle cx="38" cy="43" r="1.5" fill="#6B7385"/>'],
+ artsmetiers:["#BEE7FF",'<circle cx="13" cy="14" r="4.5" fill="#fff"/><circle cx="19" cy="13" r="5.5" fill="#fff"/><ellipse cx="32" cy="35" rx="21" ry="5.5" fill="#FF5B2E"/><rect x="21" y="22" width="22" height="4.5" rx="2" fill="#FFC93D"/><rect x="21" y="43" width="22" height="4.5" rx="2" fill="#FFC93D"/><path d="M26 26v17M38 26v17" stroke="#0B0B0B" stroke-width="1.5"/><path d="M54 28v14" stroke="#0B0B0B" stroke-width="2.5" stroke-linecap="round"/><path d="M12 31 L7 24 L15 31Z" fill="#FF5B2E"/>'],
+ grandpalais:["#FFB8D1",'<path d="M7 50 C7 25 57 25 57 50Z" fill="#9FD8F5"/><path d="M7 50 C7 25 57 25 57 50 M20 50 C20 34 44 34 44 50 M32 29v21 M13 40h38" stroke="#2E5E8C" stroke-width="1.6" fill="none"/><rect x="31" y="15" width="2" height="12" fill="#2E5E8C"/><path d="M33 15h9l-3 3 3 3h-9Z" fill="#FF3B6B"/><rect x="3" y="50" width="58" height="5" fill="#0B0B0B"/>'],
+ philharmonie:["#8B5CF6",'<path d="M24 45V18l20-6v27" stroke="#fff" stroke-width="3.5" fill="none" stroke-linejoin="round"/><ellipse cx="19.5" cy="46" rx="6.5" ry="5" fill="#FFC93D"/><ellipse cx="39.5" cy="40" rx="6.5" ry="5" fill="#FFC93D"/><circle cx="11" cy="17" r="2.2" fill="#FF8FAB"/><circle cx="53" cy="51" r="2.6" fill="#FF8FAB"/><circle cx="52" cy="14" r="1.6" fill="#fff"/>'],
+ museeherbe:["#FF8FAB",'<rect x="11" y="13" width="42" height="33" rx="2" fill="#FFC93D"/><rect x="15" y="17" width="34" height="25" fill="#fff"/><circle cx="26" cy="26" r="4.5" fill="#FF5B2E"/><path d="M15 42 L28 31 L36 37 L42 32 L49 38 V42Z" fill="#2F9E6B"/><path d="M43 57 L54 44" stroke="#0B0B0B" stroke-width="3" stroke-linecap="round"/><circle cx="55" cy="43" r="2.8" fill="#2F6BFF"/>'],
+ aquarium:["#1EA7E1",'<rect x="0" y="54" width="64" height="10" fill="#FFD27A"/><path d="M9 36 C21 23 40 23 50 34 L59 27 L57 38 L59 47 L50 40 C40 49 21 49 9 36Z" fill="#E8F1F8"/><path d="M29 26 L34 17 L38 27Z" fill="#E8F1F8"/><circle cx="17" cy="34" r="1.9" fill="#0B0B0B"/><path d="M15 40h8" stroke="#0B0B0B" stroke-width="1.5"/><circle cx="20" cy="13" r="3" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="26" cy="7" r="2" stroke="#fff" stroke-width="1.5" fill="none"/><path d="M8 54 q3 -7 0 -12 M56 54 q-3 -6 0 -10" stroke="#2F9E6B" stroke-width="3" fill="none" stroke-linecap="round"/>'],
+ buttes:["#9FE0B5",'<rect x="0" y="48" width="64" height="16" fill="#4FB3E8"/><path d="M17 50 L24 26 L40 26 L47 50Z" fill="#B9B4A8"/><path d="M23 27 L32 17 L41 27Z" fill="#fff"/><rect x="25" y="21" width="14" height="6" fill="#fff"/><path d="M28 21v6M32 21v6M36 21v6" stroke="#B9B4A8" stroke-width="1"/><circle cx="9" cy="40" r="9" fill="#2F9E6B"/><circle cx="55" cy="40" r="9" fill="#2F9E6B"/><circle cx="50" cy="11" r="4.5" fill="#FFC93D"/>'],
+ bercy:["#C8F2A6",'<circle cx="50" cy="12" r="5.5" fill="#FFC93D"/><rect x="0" y="46" width="64" height="18" fill="#7BC67E"/><rect x="18" y="32" width="3.5" height="16" fill="#7A4A12"/><circle cx="19.5" cy="26" r="11" fill="#2F9E6B"/><rect x="42" y="36" width="3" height="12" fill="#7A4A12"/><circle cx="43.5" cy="32" r="7.5" fill="#3FB86F"/><circle cx="29" cy="54" r="2.8" fill="#FF5B2E"/><circle cx="37" cy="57" r="2.8" fill="#FF5B2E"/><circle cx="45" cy="54" r="2.8" fill="#FF5B2E"/>'],
+ luxembourg:["#BEE7FF",'<ellipse cx="32" cy="51" rx="29" ry="8.5" fill="#4FB3E8"/><path d="M32 13 V45" stroke="#0B0B0B" stroke-width="2"/><path d="M33 15 L49 41 H33Z" fill="#fff"/><path d="M31 20 L19 41 H31Z" fill="#FF5B2E"/><path d="M19 45 H47 L42 51 H24Z" fill="#7A4A12"/><path d="M32 13 L39 15.5 L32 18Z" fill="#2F6BFF"/>'],
+ villette:["#FFC93D",'<rect x="0" y="52" width="64" height="12" fill="#7BC67E"/><path d="M9 52 C9 29 30 29 30 44 C30 29 50 25 52 40 L57 33 L57 44 L52 52Z" fill="#8B5CF6"/><circle cx="50" cy="38" r="2" fill="#fff"/><path d="M15 36 L19 29 L22 37 M26 32 L30 25 L31 34" fill="#FF5B2E" stroke="#FF5B2E" stroke-width="2" stroke-linejoin="round"/><path d="M13 52 C17 44 24 44 26 52" fill="#FFC93D"/>'],
+ tuileries:["#FFD1DC",'<circle cx="32" cy="27" r="18" fill="none" stroke="#2F6BFF" stroke-width="2.5"/><path d="M32 9v36M14 27h36M19.3 14.3l25.4 25.4M44.7 14.3L19.3 39.7" stroke="#2F6BFF" stroke-width="1.2"/><circle cx="32" cy="9" r="3.4" fill="#FF5B2E"/><circle cx="50" cy="27" r="3.4" fill="#FFC93D"/><circle cx="32" cy="45" r="3.4" fill="#2F9E6B"/><circle cx="14" cy="27" r="3.4" fill="#8B5CF6"/><path d="M32 27 L21 57 M32 27 L43 57" stroke="#0B0B0B" stroke-width="2.5"/>'],
+ monceau:["#E6D3FF",'<rect x="0" y="56" width="64" height="8" fill="#7BC67E"/><path d="M37 7 L51 22 L37 38 L23 22Z" fill="#FF5B2E"/><path d="M37 7 V38 M23 22 H51" stroke="#fff" stroke-width="1.6"/><path d="M37 38 C30 46 41 50 30 58" stroke="#0B0B0B" stroke-width="1.5" fill="none"/><path d="M34 46l-3 2 3 2M31 53l-3 2 3 2" stroke="#2F6BFF" stroke-width="2" fill="none"/>'],
+ montsouris:["#BEE7FF",'<rect x="0" y="42" width="64" height="22" fill="#4FB3E8"/><ellipse cx="35" cy="40" rx="17" ry="9.5" fill="#FFC93D"/><circle cx="20" cy="28" r="8.5" fill="#FFC93D"/><path d="M12 28 L3 30 L12 33Z" fill="#FF5B2E"/><circle cx="19" cy="26" r="1.7" fill="#0B0B0B"/><path d="M28 38 C34 33 41 35 45 40" stroke="#E0A82E" stroke-width="2" fill="none"/><path d="M6 54 q4 -3 8 0 q4 3 8 0 M40 56 q4 -3 8 0 q4 3 8 0" stroke="#BEE7FF" stroke-width="1.6" fill="none"/>'],
+ citroen:["#9FE0B5",'<circle cx="32" cy="24" r="17" fill="#FF5B2E"/><path d="M15 24h34 M32 7c-8.5 8.5-8.5 25.5 0 34 c8.5-8.5 8.5-25.5 0-34" stroke="#fff" stroke-width="1.6" fill="none"/><path d="M23 36 L28 43 M41 36 L36 43" stroke="#0B0B0B" stroke-width="1.2"/><rect x="27" y="43" width="10" height="7" rx="1.5" fill="#0B0B0B"/><path d="M32 50v14" stroke="#0B0B0B" stroke-width="1" stroke-dasharray="2 2"/>'],
+ belleville:["#FFB8A1",'<circle cx="45" cy="20" r="8.5" fill="#FFE07A"/><path d="M0 51 V41 H8 V35 H16 V43 H22 V37 H30 V45 H40 V39 H48 V45 H56 V37 H64 V51Z" fill="#6B4C9A"/><path d="M13 51 L18 15 L23 51" stroke="#0B0B0B" stroke-width="2" fill="none"/><path d="M15 36h6" stroke="#0B0B0B" stroke-width="2"/><rect x="0" y="51" width="64" height="13" fill="#3FB86F"/>'],
+ floral:["#FFF1A8",'<rect x="0" y="50" width="64" height="14" fill="#7BC67E"/><path d="M16 50V30M32 50V22M48 50V32" stroke="#2F9E6B" stroke-width="2.5"/>'+flower(16,28,"#FF5B2E")+flower(32,19,"#FF8FAB")+flower(48,30,"#8B5CF6")],
+ ferme:["#C8F2A6",'<rect x="0" y="52" width="64" height="12" fill="#7BC67E"/><rect x="12" y="24" width="35" height="20" rx="8" fill="#fff"/><circle cx="22" cy="30" r="4.2" fill="#0B0B0B"/><circle cx="38" cy="38" r="3.2" fill="#0B0B0B"/><rect x="16" y="42" width="4.5" height="10" fill="#fff"/><rect x="38" y="42" width="4.5" height="10" fill="#fff"/><ellipse cx="50" cy="24" rx="8.5" ry="7.5" fill="#fff"/><ellipse cx="53" cy="28.5" rx="5.5" ry="3.8" fill="#FFB8C8"/><circle cx="48" cy="21" r="1.5" fill="#0B0B0B"/><path d="M45 16l-3-4M54 16l3-4" stroke="#B9B4A8" stroke-width="2.5" stroke-linecap="round"/>'],
+ daumesnil:["#9FD8F5",'<rect x="0" y="40" width="64" height="24" fill="#2F8FD8"/><path d="M7 40 H57 L51 50 H13Z" fill="#B5651D"/><path d="M19 30 L41 48" stroke="#7A4A12" stroke-width="2.5" stroke-linecap="round"/><circle cx="30" cy="28" r="4.5" fill="#FF5B2E"/><path d="M5 57 q4 -3 8 0 q4 3 8 0 M40 57 q4 -3 8 0 q4 3 8 0" stroke="#BEE7FF" stroke-width="1.6" fill="none"/>'],
+ versailles:["#FFE07A",'<circle cx="32" cy="15" r="7" fill="#FF9F1C"/><path d="M32 3v4M44 15h4M16 15h4M41 6l3-3M23 6l-3-3" stroke="#FF9F1C" stroke-width="2" stroke-linecap="round"/><rect x="7" y="32" width="50" height="18" fill="#fff"/><path d="M7 32 L13 26 H51 L57 32Z" fill="#2E5E8C"/><path d="M13 36v10M19 36v10M25 36v10M39 36v10M45 36v10M51 36v10" stroke="#E0A82E" stroke-width="2"/><rect x="29" y="38" width="6" height="12" fill="#E0A82E"/><rect x="0" y="50" width="64" height="14" fill="#3FB86F"/>'],
+ sceaux:["#BEE7FF",'<rect x="0" y="40" width="64" height="24" fill="#7BC67E"/><path d="M26 64 L30 40 H34 L38 64Z" fill="#4FB3E8"/><path d="M9 45 L14 23 L19 45Z M45 45 L50 23 L55 45Z M19 42 L23 28 L27 42Z M37 42 L41 28 L45 42Z" fill="#2F9E6B"/><rect x="24" y="30" width="16" height="10" fill="#fff"/><path d="M23 30 L32 23 L41 30Z" fill="#A8300C"/>'],
+ saintcloud:["#FFD6A5",'<rect x="0" y="44" width="64" height="20" fill="#3FB86F"/><rect x="15" y="40" width="34" height="8" rx="2" fill="#4FB3E8"/><path d="M32 40 C30 30 34 23 32 12 M24 40 C23 34 26 30 24 25 M40 40 C41 34 38 30 40 25" stroke="#4FB3E8" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="9" cy="36" r="9" fill="#2F9E6B"/><circle cx="55" cy="36" r="9" fill="#2F9E6B"/>'],
+ cergy:["#FFC93D",'<circle cx="49" cy="15" r="7.5" fill="#FF5B2E"/><rect x="0" y="42" width="64" height="22" fill="#1EA7E1"/><path d="M0 43 q8 -6 16 0 q8 6 16 0 q8 -6 16 0 q8 6 16 0" fill="#1EA7E1"/><path d="M13 41 L40 41" stroke="#0B0B0B" stroke-width="3" stroke-linecap="round"/><circle cx="26" cy="21" r="3.8" fill="#0B0B0B"/><path d="M26 25 L28 37 M28 30 L38 26" stroke="#0B0B0B" stroke-width="3" stroke-linecap="round"/><path d="M38 26 L60 19" stroke="#0B0B0B" stroke-width="1"/>'],
+ disney:["#2E2A6B",'<circle cx="14" cy="14" r="2.2" fill="#FFC93D"/><path d="M14 7v-3M14 21v3M7 14h-3M21 14h3" stroke="#FFC93D" stroke-width="1.6" stroke-linecap="round"/><path d="M45 8 l2.2 4.5 5 .7 -3.6 3.5 .9 5 -4.5 -2.4 -4.5 2.4 .9 -5 -3.6 -3.5 5 -.7Z" fill="#FF8FAB"/><rect x="0" y="50" width="64" height="14" fill="#1B1840"/><path d="M3 50 C13 19 24 19 30 40 C36 57 47 23 61 30" stroke="#FF5B2E" stroke-width="3.2" fill="none"/><path d="M11 50v-15M22 50v-23M37 50v-6M49 50v-21" stroke="#fff" stroke-width="1.2"/>'],
+ asterix:["#FF8FAB",'<rect x="0" y="52" width="64" height="12" fill="#7BC67E"/><circle cx="32" cy="30" r="14" fill="none" stroke="#A8300C" stroke-width="4"/><path d="M3 52 C12 52 18 44 22 40 M42 40 C46 44 52 52 61 52" stroke="#A8300C" stroke-width="4" fill="none"/><path d="M20 52V38M32 52V44M44 52V38" stroke="#7A4A12" stroke-width="2"/><rect x="27" y="12.5" width="10" height="5" rx="2" fill="#FFC93D"/>'],
+ miniature:["#9FE0B5",'<rect x="0" y="50" width="64" height="14" fill="#3FB86F"/><path d="M19 50 L25 18 L31 50" stroke="#B5651D" stroke-width="2.5" fill="none"/><path d="M21 40h8M23 30h4" stroke="#B5651D" stroke-width="2"/><circle cx="42" cy="31" r="10.5" fill="#fff" fill-opacity=".55" stroke="#0B0B0B" stroke-width="3"/><path d="M49.5 38.5 L58 47" stroke="#0B0B0B" stroke-width="4.5" stroke-linecap="round"/>']
+};
+function catTag(p){var t=TINT[p.cat]||TINT.Château;return '<span class="tag" style="background:'+t[0]+';color:'+t[1]+'">'+esc(p.cat)+'</span>';}
+
+/* ---------- Jours fériés ---------- */
+function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
+function addDays(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);return x;}
+function key(d){return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+var HOL={};
+[new Date().getFullYear(),new Date().getFullYear()+1].forEach(function(y){
+  [[0,1,"Jour de l'an"],[4,1,"Fête du Travail"],[4,8,"Victoire 1945"],[6,14,"Fête nationale"],[7,15,"Assomption"],[10,1,"Toussaint"],[10,11,"Armistice"],[11,25,"Noël"]].forEach(function(h){HOL[key(new Date(y,h[0],h[1]))]=h[2];});
+  var e=easter(y);HOL[key(addDays(e,1))]="Lundi de Pâques";HOL[key(addDays(e,39))]="Ascension";HOL[key(addDays(e,50))]="Lundi de Pentecôte";
+});
+function holName(d){return HOL[key(d)]||null;}
+function bigClosed(d){var m=d.getMonth(),n=d.getDate();return (m===0&&n===1)||(m===4&&n===1)||(m===11&&n===25);}
+function isOpen(p,d){
+  if(p.months&&p.months.indexOf(d.getMonth()+1)<0)return false;
+  if(p.days.indexOf(d.getDay())<0)return false;
+  if(p.hc&&bigClosed(d))return false;
+  return true;
+}
+var DOW=["dim.","lun.","mar.","mer.","jeu.","ven.","sam."],MON=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+function fmtDay(d){return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()];}
+var TODAY=new Date();TODAY=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+function nextSunday(){var d=TODAY;var n=(7-d.getDay())%7;if(n===0)n=7;return addDays(d,n);}
+function nextHoliday(){for(var i=1;i<400;i++){var d=addDays(TODAY,i);if(holName(d))return d;}return null;}
+
+/* ---------- Stockage local (confort, non fiable) ---------- */
+function load(k,def){try{var v=localStorage.getItem("onsort."+k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(k,v){try{localStorage.setItem("onsort."+k,JSON.stringify(v));}catch(e){}}
+
+/* ---------- État ---------- */
+var S={quick:{free:false,dry:false,near:false,deal:false},fam:load("fam",null),tab:"explore",where:load("where",10),date:TODAY,q:"",ages:[],budget:"all",io:"all",cat:"all",zoom:"paris",favs:load("favs",[]),tickets:load("tickets",[])};
+
+/* ---------- Utilitaires ---------- */
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function dist(a,b,c,d){var R=6371,t=Math.PI/180,x=(c-a)*t,y=(d-b)*t,h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*t)*Math.cos(c*t)*Math.sin(y/2)*Math.sin(y/2);return 2*R*Math.asin(Math.sqrt(h));}
+function here(){return S.geo||PLACES[S.where];}
+function km(p){var h=here();return dist(h[1],h[2],p.lat,p.lng);}
+function travel(k){if(k<1.6)return Math.max(3,Math.round(k*13))+" min à pied";if(k<25)return Math.round(10+k*3.2)+" min en transport";return Math.round(k*1.1)+" min en voiture";}
+function eur(n){return (Math.round(n*100)/100).toFixed(2).replace(".00","").replace(".",",")+" €";}
+function kidCost(p){return p.en!=null?p.en:p.ad;}
+function priceLabel(p){var ft=famTotal(p);if(ft!=null)return ft===0?"Gratuit":"≈ "+eur(ft);var c=kidCost(p);if(c===0&&p.ad===0)return "Gratuit";if(p.en===0)return "Gratuit enfant";if(c==null)return "Voir tarifs";return "dès "+eur(c);}
+function shortPrice(p){var c=kidCost(p);if(c===0&&p.ad===0)return "Gratuit";if(p.en===0)return "0 € enf.";if(c==null)return "€";return eur(c);}
+function ageText(p){return p.a[1]>=99?(p.a[0]===0?"Tous âges":"Dès "+p.a[0]+" ans"):p.a[0]+"–"+p.a[1]+" ans";}
+var AGES=[["0–2",0,2],["3–5",3,5],["6–9",6,9],["10–12",10,12],["13+",13,99]];
+function norm(t){return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
+function famTotal(p){
+  if(!S.fam)return null;var K=S.fam.kids,ad=p.ad,en=p.en;
+  var payKids=K.filter(function(k){return !(p.free3&&k<3);}).length;
+  if(ad==null||(payKids&&en==null))return null;
+  return S.fam.ad*ad+payKids*(en||0);
+}
+function isFree(p){var t=famTotal(p);if(t!=null)return t===0;return p.ad===0&&kidCost(p)===0;}
+function ageFit(p){
+  if(!S.fam||!S.fam.kids.length)return {ok:true,all:true,miss:[]};
+  var miss=S.fam.kids.filter(function(k){return !(p.a[0]<=k&&p.a[1]>=k);});
+  return {ok:miss.length<S.fam.kids.length,all:!miss.length,miss:miss};
+}
+function hoursStatus(p){
+  if(key(S.date)!==key(TODAY))return null;
+  var m=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours);if(!m)return null;
+  var now=new Date(),n=now.getHours()*60+now.getMinutes(),o=+m[1]*60+(+m[2]||0),c=+m[3]*60+(+m[4]||0),cl=m[3]+"h"+(m[4]||"");
+  if(n<o)return {t:"Ouvre à "+m[1]+"h"+(m[2]||""),c:"#6E4D00"};
+  if(n>=c)return {t:"Fermé pour aujourd'hui",c:"#A8300C",closed:true};
+  if(c-n<=60)return {t:"Ferme bientôt ("+cl+")",c:"#A8300C"};
+  return {t:"Ouvert jusqu'à "+cl,c:"#1E6B3A"};
+}
+function matches(p){
+  if(!isOpen(p,S.date))return false;
+  if(S.q){var q=norm(S.q.trim());if(q.length>3)q=q.replace(/s$/,"");if(norm(p.name+" "+p.area+" "+p.cat+" "+p.io+" "+p.desc).indexOf(q)<0)return false;}
+  if(!ageFit(p).ok)return false;
+  if(S.quick.free&&!isFree(p))return false;
+  if(S.quick.dry&&p.io==="Plein air")return false;
+  if(S.quick.near&&km(p)>3)return false;
+  if(S.quick.deal&&!p.offer)return false;
+  return true;
+}
+function results(){return P.filter(matches).sort(function(a,b){var ca=(hoursStatus(a)||{}).closed?1:0,cb=(hoursStatus(b)||{}).closed?1:0;return ca-cb||km(a)-km(b);});}
+function toast(t){var el=document.createElement("div");el.className="toast";el.textContent=t;el.setAttribute("role","status");document.getElementById("app").appendChild(el);setTimeout(function(){el.remove();},1800);}
+function ill(id,extra){var d=ILL[id]||["#F2F2F0",""];return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
+/* ---------- Photos Wikimedia Commons (chargées par le navigateur, crédit obligatoire) ---------- */
+var PQ={acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
+var PH=load("ph.v1",{});
+function stripHtml(h){try{return (new DOMParser().parseFromString(h||"","text/html").body.textContent||"").trim().replace(/\s+/g," ");}catch(e){return "";}}
+function fetchPhoto(id){
+  var q=PQ[id];if(!q)return Promise.resolve(null);
+  var u="https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=8&gsrsearch="+encodeURIComponent(q+" filetype:bitmap")+"&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=900&iiextmetadatafilter=Artist|LicenseShortName";
+  return fetch(u).then(function(r){return r.json();}).then(function(j){
+    var pages=j&&j.query&&j.query.pages?Object.keys(j.query.pages).map(function(k){return j.query.pages[k];}):[];
+    pages.sort(function(a,b){return (a.index||0)-(b.index||0);});
+    for(var i=0;i<pages.length;i++){var pg=pages[i],ii=pg.imageinfo&&pg.imageinfo[0];if(!ii||ii.mime!=="image/jpeg"||ii.width<900||/map|plan|carte|logo|blason/i.test(pg.title))continue;
+      var md=ii.extmetadata||{};return {t:ii.thumburl||ii.url,a:stripHtml(md.Artist&&md.Artist.value)||"Auteur inconnu",l:(md.LicenseShortName&&md.LicenseShortName.value)||"Licence libre",u:ii.descriptionurl};}
+    return null;
+  });
+}
+var phTimer=0;function phRender(){clearTimeout(phTimer);phTimer=setTimeout(function(){if(!document.querySelector(".overlay"))render();},250);}
+function loadPhotos(){
+  if(!window.fetch)return;
+  var todo=Object.keys(PQ).filter(function(id){return !PH[id];}),busy=0,fails=0;
+  function next(){
+    if(!todo.length||fails>3)return;var id=todo.shift();busy++;
+    fetchPhoto(id).then(function(ph){if(ph){PH[id]=ph;save("ph.v1",PH);phRender();}},function(){fails++;}).then(function(){busy--;next();});
+  }
+  for(var k=0;k<4;k++)next();
+}
+function tile(p){var ph=PH[p.id];return '<span class="tile">'+(ph?'<img src="'+esc(ph.t)+'" alt="" loading="lazy" onerror="this.remove()">':ill(p.id))+'</span>';}
+function heroHtml(p){
+  var ph=PH[p.id];
+  if(ph)return '<div class="hero" style="background:'+(ILL[p.id]||["#F2F2F0"])[0]+'"><img src="'+esc(ph.t)+'" alt="Photo : '+esc(p.name)+'"><span>'+esc(p.cat)+'</span></div><div class="credit">Photo : <a href="'+esc(ph.u)+'" target="_blank" rel="noopener">'+esc(ph.a)+'</a> · '+esc(ph.l)+' · Wikimedia Commons</div>';
+  return '<div class="hero" style="background:'+(ILL[p.id]||["#F2F2F0"])[0]+'">'+ill(p.id).replace(/<rect x="0" y="(\d+)" width="64"/g,'<rect x="-200" y="$1" width="464"')+'<span>'+esc(p.cat)+'</span></div>';
+}
+function requestGPS(show){
+  try{
+    if(!navigator.geolocation){if(show)toast("Position indisponible ici");return;}
+    navigator.geolocation.getCurrentPosition(function(pos){S.geo=["Ma position",pos.coords.latitude,pos.coords.longitude];MV={z:1,c:null};closeOv();render();},function(){if(show)toast("Position refusée ou indisponible");},{timeout:8000,maximumAge:600000});
+  }catch(e){if(show)toast("Position indisponible ici");}
+}
+var X='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+var BACK='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+function heart(on){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="'+(on?"#FF5B2E":"none")+'" stroke="'+(on?"#FF5B2E":"currentColor")+'" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>';}
+
+/* ---------- Carte ---------- */
+var BOUNDS={paris:[48.812,48.905,2.215,2.475],idf:[48.70,49.17,1.90,2.85]};
+var SEINE=[[48.8370,2.2240],[48.8440,2.2560],[48.8520,2.2790],[48.8590,2.2930],[48.8640,2.3060],[48.8635,2.3200],[48.8600,2.3330],[48.8565,2.3440],[48.8525,2.3560],[48.8470,2.3650],[48.8400,2.3730],[48.8320,2.3830],[48.8250,2.3950],[48.8190,2.4100],[48.8150,2.4300]];
+var RING=[[48.8780,2.2800],[48.8890,2.3000],[48.9010,2.3300],[48.9010,2.3700],[48.8980,2.3950],[48.8790,2.4100],[48.8530,2.4150],[48.8350,2.4110],[48.8220,2.3900],[48.8170,2.3600],[48.8180,2.3300],[48.8260,2.3000],[48.8350,2.2770],[48.8470,2.2650],[48.8630,2.2700]];
+var PARKS=[[48.8809,2.3828,.0045],[48.8462,2.3372,.0045],[48.8355,2.3835,.004],[48.8938,2.3920,.005],[48.8635,2.3275,.004],[48.8797,2.3088,.0025],[48.8222,2.3380,.0035],[48.8410,2.2750,.0035],[48.8715,2.3850,.0025],[48.8440,2.3590,.0035],[48.8556,2.2985,.004],[48.8560,2.3125,.003],[48.8380,2.4430,.004]];
+var AXES=[[[48.8738,2.2950],[48.8656,2.3212]],[[48.8656,2.3212],[48.8553,2.3610]],[[48.8800,2.3570],[48.8400,2.3390]],[[48.8700,2.3250],[48.8690,2.3640]],[[48.8530,2.3700],[48.8480,2.3960]],[[48.8590,2.3700],[48.8480,2.3960]],[[48.8530,2.3330],[48.8400,2.3200]],[[48.8840,2.3270],[48.8840,2.3600]],[[48.8530,2.3500],[48.8320,2.3550]]];
+var MV={z:1,c:null},PROJ=null,SUPPRESS=false;
+function drawMap(list){
+  var box=document.getElementById("map");if(!box)return;
+  var W=box.clientWidth,H=box.clientHeight;if(!W||!H)return;
+  var b=BOUNDS[S.zoom],h=here(),paris=S.zoom==="paris";
+  var latC=(b[0]+b[1])/2,kx=Math.cos(latC*Math.PI/180);
+  var sc=Math.max(W/((b[3]-b[2])*kx),(H-20)/(b[1]-b[0])),cx=(b[2]+b[3])/2,cy=latC;
+  if(paris){cx=Math.min(Math.max(h[2],b[2]+0.06),b[3]-0.06);cy=Math.min(Math.max(h[1],b[0]+0.02),b[1]-0.02)+(S.full?0:0.012);}
+  if(MV.c){cy=MV.c[0];cx=MV.c[1];}
+  sc*=MV.z;var oy=(H-16)/2;
+  PROJ={cx:cx,cy:cy,sc:sc,kx:kx,W:W,H:H,oy:oy};
+  function pt(lat,lng){return [W/2+(lng-cx)*kx*sc,oy-(lat-cy)*sc];}
+  function poly(arr,close){return arr.map(function(c,i){var p=pt(c[0],c[1]);return (i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1);}).join(" ")+(close?"Z":"");}
+  var u=Math.abs(pt(48.86,2.30)[0]-pt(48.86,2.31)[0]),detail=u>18;
+  var s='<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><defs><clipPath id="ring"><path d="'+poly(RING,true)+'"/></clipPath></defs><rect width="'+W+'" height="'+H+'" fill="#DDEFD2"/>';
+  var bb=pt(48.8625,2.2500),bv=pt(48.8330,2.4350);
+  s+='<ellipse cx="'+bb[0]+'" cy="'+bb[1]+'" rx="'+(u*2.4)+'" ry="'+(u*3.6)+'" fill="#9ED98A"/><ellipse cx="'+bv[0]+'" cy="'+bv[1]+'" rx="'+(u*3)+'" ry="'+(u*2)+'" fill="#9ED98A"/>';
+  s+='<path d="'+poly(RING,true)+'" fill="#FFF6E5"/>';
+  if(detail){
+    s+='<g clip-path="url(#ring)" stroke="#FFFFFF" stroke-width="'+Math.min(8,u/7).toFixed(1)+'" stroke-linecap="round" fill="none">';var sd=11;var r=function(){sd=(sd*9301+49297)%233280;return sd/233280;};
+    for(var i=0;i<40;i++){var la=48.815+r()*0.09,lo=2.25+r()*0.18,ang=r()*Math.PI,len=0.012+r()*0.012;var p1=pt(la,lo),p2=pt(la+Math.sin(ang)*len,lo+Math.cos(ang)*len/kx);s+='<path d="M'+p1[0].toFixed(1)+' '+p1[1].toFixed(1)+'L'+p2[0].toFixed(1)+' '+p2[1].toFixed(1)+'"/>';}
+    s+='</g><g stroke="#FFD66B" stroke-width="'+Math.min(12,u/4).toFixed(1)+'" stroke-linecap="round" fill="none">';
+    AXES.forEach(function(a){s+='<path d="'+poly(a,false)+'"/>';});s+='</g>';
+    PARKS.forEach(function(k){var c=pt(k[0],k[1]),rr=k[2]*sc;s+='<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="#A8E08F"/>';});
+  }
+  s+='<path d="'+poly(RING,true)+'" fill="none" stroke="#FFD66B" stroke-width="'+Math.max(3,Math.min(10,u/5)).toFixed(1)+'" stroke-linejoin="round"/>';
+  s+='<path d="'+poly(SEINE,false)+'" fill="none" stroke="#5BB8F0" stroke-width="'+Math.max(4,Math.min(40,u*0.6)).toFixed(1)+'" stroke-linecap="round" stroke-linejoin="round"/>';
+  var me=pt(h[1],h[2]),placed=[];
+  list.forEach(function(p,n){
+    var q=pt(p.lat,p.lng),ay=q[1]-30;if(q[0]<-30||q[0]>W+30||ay<-30||q[1]>H+10)return;
+    for(var j=0;j<placed.length;j++){var L=placed[j];if(Math.abs(L[0]-q[0])<44&&Math.abs(L[1]-ay)<40)return;}
+    placed.push([q[0],ay]);
+    var d=ILL[p.id]||["#F2F2F0",""],txt=p.offer?("−"+p.offer+" %"):shortPrice(p),w=txt.length*6.6+12,cb=p.offer?"#FF5B2E":"#0B0B0B",cf=p.offer?"#0B0B0B":"#FFFFFF";
+    s+='<g class="pin" data-open="'+p.id+'"><path d="M'+(q[0]-5)+' '+(ay+14)+' L'+q[0]+' '+q[1]+' L'+(q[0]+5)+' '+(ay+14)+'Z" fill="#fff"/>'+
+      '<clipPath id="pc'+n+'"><circle cx="'+q[0].toFixed(1)+'" cy="'+ay.toFixed(1)+'" r="16"/></clipPath><circle cx="'+q[0].toFixed(1)+'" cy="'+ay.toFixed(1)+'" r="19" fill="#fff"/>'+
+      '<g clip-path="url(#pc'+n+')">'+(PH[p.id]?'<image href="'+esc(PH[p.id].t)+'" x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>':'<svg x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" viewBox="0 0 64 64"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>')+'</g>'+
+      '<rect x="'+(q[0]+8).toFixed(1)+'" y="'+(ay-24).toFixed(1)+'" width="'+w.toFixed(1)+'" height="17" rx="8.5" fill="'+cb+'" stroke="#fff" stroke-width="1.5"/><text x="'+(q[0]+8+w/2).toFixed(1)+'" y="'+(ay-12).toFixed(1)+'" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-size="10.5" font-weight="700" fill="'+cf+'">'+esc(txt)+'</text>'+
+      (MV.z>2.2?'<text x="'+q[0].toFixed(1)+'" y="'+(q[1]+14).toFixed(1)+'" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0B0B0B" stroke="#FFF6E5" stroke-width="3" paint-order="stroke">'+esc(p.name.length>26?p.name.slice(0,24)+"…":p.name)+'</text>':'')+'</g>';
+  });
+  s+='<circle cx="'+me[0]+'" cy="'+me[1]+'" r="15" fill="rgba(47,107,255,.2)"/><circle cx="'+me[0]+'" cy="'+me[1]+'" r="7" fill="#2F6BFF" stroke="#fff" stroke-width="2.5"/></svg>';
+  var old=box.querySelector(":scope>svg");if(old)old.remove();
+  box.insertAdjacentHTML("afterbegin",s);
+}
+var raf=0;function redrawMap(){if(raf)return;raf=requestAnimationFrame(function(){raf=0;drawMap(results());});}
+function geo(x,y,P){return [P.cy-(y-P.oy)/P.sc,P.cx+(x-P.W/2)/(P.kx*P.sc)];}
+function zoomAt(x,y,f){if(!PROJ)return;var P=PROJ,G=geo(x,y,P),z=Math.max(0.15,Math.min(14,MV.z*f)),nsc=P.sc*z/MV.z;MV.z=z;MV.c=[G[0]+(y-P.oy)/nsc,G[1]-(x-P.W/2)/(P.kx*nsc)];redrawMap();}
+function bindMap(){
+  var box=document.getElementById("map");if(!box)return;
+  var ptrs={},g=null,moved=false;
+  function snap(){var ids=Object.keys(ptrs);g={P:PROJ,z:MV.z,pts:ids.map(function(k){return {x:ptrs[k].x,y:ptrs[k].y};})};}
+  function rel(e){var r=box.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+  function svgEl(){return box.querySelector(":scope>svg");}
+  function applyT(tx,ty,k){var el=svgEl();if(!el)return;el.style.transformOrigin="0 0";el.style.willChange="transform";el.style.transform="translate("+tx.toFixed(1)+"px,"+ty.toFixed(1)+"px) scale("+k.toFixed(4)+")";}
+  function commit(){drawMap(results());}
+  box.addEventListener("pointerdown",function(e){if(e.target.closest("button"))return;ptrs[e.pointerId]=rel(e);moved=false;snap();});
+  function move(e){
+    if(!(e.pointerId in ptrs)||!g||!g.P)return;ptrs[e.pointerId]=rel(e);
+    var ids=Object.keys(ptrs),P=g.P;
+    if(ids.length===1&&g.pts.length===1){var a=ptrs[ids[0]],dx=a.x-g.pts[0].x,dy=a.y-g.pts[0].y;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;if(!moved)return;MV.c=[P.cy+dy/P.sc,P.cx-dx/(P.kx*P.sc)];applyT(dx,dy,1);}
+    else if(ids.length>=2&&g.pts.length>=2){
+      var a1=ptrs[ids[0]],b1=ptrs[ids[1]],a0=g.pts[0],b0=g.pts[1];
+      var d0=Math.hypot(a0.x-b0.x,a0.y-b0.y)||1,d1=Math.hypot(a1.x-b1.x,a1.y-b1.y);
+      var m0={x:(a0.x+b0.x)/2,y:(a0.y+b0.y)/2},m1={x:(a1.x+b1.x)/2,y:(a1.y+b1.y)/2};
+      var G=geo(m0.x,m0.y,P),z=Math.max(0.15,Math.min(14,g.z*d1/d0)),nsc=P.sc*z/g.z;
+      MV.z=z;MV.c=[G[0]+(m1.y-P.oy)/nsc,G[1]-(m1.x-P.W/2)/(P.kx*nsc)];moved=true;var k=z/g.z;applyT(m1.x-k*m0.x,m1.y-k*m0.y,k);
+    }
+  }
+  function up(e){if(!(e.pointerId in ptrs))return;delete ptrs[e.pointerId];if(moved){commit();SUPPRESS=true;setTimeout(function(){SUPPRESS=false;},60);}snap();}
+  window.onpointermove=move;window.onpointerup=up;window.onpointercancel=up;
+  box.addEventListener("wheel",function(e){e.preventDefault();var r=rel(e);zoomAt(r.x,r.y,Math.exp(-e.deltaY*0.0022));},{passive:false});
+  var gb=document.querySelector(".grabbtn");
+  if(gb){var gy=null;gb.addEventListener("pointerdown",function(e){gy=e.clientY;});gb.addEventListener("pointerup",function(e){if(gy==null)return;var dy=e.clientY-gy;gy=null;if(dy>30&&!S.full){S.full=true;SUPPRESS=true;setTimeout(function(){SUPPRESS=false;},60);render();}else if(dy<-30&&S.full){S.full=false;SUPPRESS=true;setTimeout(function(){SUPPRESS=false;},60);render();}});}
+}
+/* ---------- Vues ---------- */
+function dateChips(){
+  var out=[["Aujourd'hui",TODAY]],sun=nextSunday(),hol=nextHoliday();
+  if(TODAY.getDay()!==0)out.push(["Dim. "+sun.getDate(),sun]);else out.push(["Dim. "+addDays(TODAY,7).getDate(),addDays(TODAY,7)]);
+  if(hol)out.push([DOW[hol.getDay()].replace(".","")+". "+hol.getDate()+" · férié",hol,true]);
+  return out;
+}
+function famText(){if(!S.fam)return "Qui vient ?";var k=S.fam.kids.slice().sort(function(a,b){return a-b;});return S.fam.ad+" adulte"+(S.fam.ad>1?"s":"")+(k.length?" · "+(k.length===1?(k[0]||"bébé")+(k[0]?" an"+(k[0]>1?"s":""):""):k.map(function(x){return x||"bébé";}).join(", ").replace(/, ([^,]*)$/," et $1")+" ans"):"");}
+function whenText(){var h=holName(S.date);if(key(S.date)===key(TODAY))return "Aujourd'hui";if(key(S.date)===key(addDays(TODAY,1)))return "Demain";return fmtDay(S.date)+(h?" · férié":"");}
+var CAL='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>';
+var FAM='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="10" r="2.2"/><path d="M3 20a6 6 0 0 1 12 0M14 20a4 4 0 0 1 7 0"/></svg>';
+function renderExplore(){
+  var list=results(),h=here(),hol=holName(S.date);
+  var html='<div class="map" id="map"><div class="topbar"><div class="logo">on sort<i>.</i></div><button class="pillbtn" data-act="where" aria-label="Changer de point de départ, actuellement '+esc(h[0])+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="#2F6BFF" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>'+esc(h[0])+'</button></div>'+
+   '<div class="mapctl"><button data-act="recenter" aria-label="Recentrer sur mon point de départ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button></div></div>';
+  html+='<div class="sheet"><button class="grabbtn" data-act="sheet" aria-label="'+(S.full?"Afficher la liste":"Afficher la carte en grand")+'" aria-expanded="'+(!S.full)+'"><span class="grab"></span></button><div class="scroll" id="scroll">';
+  html+='<div class="search"><input id="q" type="search" placeholder="On sort où ?" aria-label="Chercher une sortie, un lieu, une envie" value="'+esc(S.q)+'" autocomplete="off"></div>';
+  html+='<div class="sum"><button class="spill'+(hol?" hol":"")+'" data-act="date">'+CAL+esc(whenText())+'</button><button class="spill'+(S.fam?"":" nudge")+'" data-act="fam">'+FAM+esc(famText())+'</button></div>';
+  html+='<div class="chips" role="group" aria-label="Raccourcis">'+[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]].map(function(b){return '<button class="chip" data-quick="'+b[0]+'" aria-pressed="'+S.quick[b[0]]+'">'+b[1]+'</button>';}).join("")+'</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:2px"><h1 class="headline">'+list.length+' sortie'+(list.length>1?"s":"")+' pour vous</h1><span class="label">'+esc(fmtDay(S.date))+(hol?" · "+esc(hol)+", jour férié":"")+' · depuis '+esc(h[0])+'</span></div>';
+  if(!S.fam)html+='<button class="nudgecard" data-act="fam"><b>Ajoute l’âge de tes enfants</b><span>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</span></button>';
+  if(!list.length){
+    var on=[[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]]].filter(function(b){return S.quick[b[0]];});
+    html+='<div class="empty">Rien ne correspond ce jour-là.<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">'+on.map(function(b){return '<button class="chip" data-quick="'+b[0]+'">Retirer « '+b[1]+' »</button>';}).join("")+(S.q?'<button class="chip" data-act="clearq">Effacer la recherche</button>':'')+'<button class="chip" data-act="date">Changer de jour</button></div></div>';
+  } else {html+='<div>';list.forEach(function(p){html+=rowHtml(p);});html+='</div>';}
+  html+='<p class="banner">Version de test. Photos : Wikimedia Commons (auteur et licence dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu. Les offres −10 % et les réservations sont des démonstrations, aucun paiement n\'est fait.</p>';
+  return html+'</div></div>';
+}
+function rowHtml(p){
+  var k=km(p),st=hoursStatus(p),fit=ageFit(p);
+  var sub=travel(k)+(st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
+  return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
+}
+function renderFavs(){
+  var html='<div class="plain"><h1 class="bigtitle">Mes sorties</h1>';
+  if(S.tickets.length){html+='<span class="label">Billets</span><div>';S.tickets.slice().reverse().forEach(function(t,i){var p=P.filter(function(x){return x.id===t.id;})[0];if(!p)return;html+='<button class="row" data-ticket="'+(S.tickets.length-1-i)+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+esc(fmtDay(new Date(t.date)))+' · '+t.ad+' ad. · '+t.en+' enf.</span></span><span class="price">'+esc(t.total===0?"Gratuit":eur(t.total))+'</span></button>';});html+='</div>';}
+  var list=P.filter(function(p){return S.favs.indexOf(p.id)>=0;}).sort(function(a,b){return km(a)-km(b);});
+  html+='<span class="label">Favoris</span>';
+  if(!list.length)html+='<div class="empty" style="padding-top:8px">Touche le cœur sur une sortie pour la garder ici.</div>';
+  else{html+='<div>';list.forEach(function(p){html+=rowHtml(p);});html+='</div>';}
+  if(!S.tickets.length)html+='<div class="empty" style="padding-top:0">Tes réservations apparaîtront aussi ici.</div>';
+  return html+'</div>';
+}
+function render(){
+  var v=document.getElementById("view"),sc=document.getElementById("scroll"),top=sc?sc.scrollTop:0,f=document.activeElement&&document.activeElement.id;
+  v.innerHTML=S.tab==="explore"?renderExplore():renderFavs();
+  document.querySelectorAll("nav.tabs button").forEach(function(b){if(b.dataset.tab===S.tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});
+  v.classList.toggle("full",S.tab==="explore"&&!!S.full);if(S.tab==="explore"){drawMap(results());bindMap();var ns=document.getElementById("scroll");if(ns)ns.scrollTop=top;var q=document.getElementById("q");if(q){q.addEventListener("input",function(){S.q=q.value;var pos=q.selectionStart;render();var nq=document.getElementById("q");nq.focus();try{nq.setSelectionRange(pos,pos);}catch(e){}});if(f==="q")q.focus();}}
+}
+
+/* ---------- Fenêtres ---------- */
+function closeOv(){var o=document.querySelector(".overlay");if(o)o.remove();}
+function ov(html,dim){closeOv();var d=document.createElement("div");d.className="overlay"+(dim?" dim":"");d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.innerHTML=html;document.getElementById("app").appendChild(d);var f=d.querySelector("button,a,input");if(f)f.focus();return d;}
+var SHARE='<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+function openPlace(id){
+  var p=P.filter(function(x){return x.id===id;})[0];if(!p)return;
+  var fav=S.favs.indexOf(p.id)>=0,open=isOpen(p,S.date),k=km(p),st=hoursStatus(p),fit=ageFit(p),ft=famTotal(p);
+  var bookable=p.ad!=null&&p.en!=null&&(p.ad>0||p.en>0)&&open;
+  var dir="https://www.google.com/maps/dir/?api=1&destination="+p.lat+","+p.lng;
+  var rows='<div class="fact"><span>'+esc(fmtDay(S.date))+'</span><span style="color:'+(open?(st?st.c:"#1E6B3A"):"#A8300C")+'">'+(open?(st?esc(st.t):"Ouvert · "+esc(p.hours)):"Fermé ce jour-là")+'</span></div>';
+  if(S.fam&&ft!=null)rows+='<div class="fact"><span>Pour vous ('+esc(famText())+')</span><span style="font-size:16px">'+(ft===0?"Gratuit":eur(ft))+'</span></div>';
+  rows+='<div class="fact"><span>Adulte</span><span>'+(p.ad==null?"Voir le site":p.ad===0?"Gratuit":eur(p.ad))+'</span></div><div class="fact"><span>Enfant</span><span>'+(p.en==null?"Voir le site":p.en===0?"Gratuit":eur(p.en))+'</span></div><div class="fact"><span>À savoir</span><span>'+esc(p.note)+'</span></div>';
+  var h='<div class="ovtop"><button class="round" data-act="close" aria-label="Retour">'+BACK+'</button><span style="display:flex;gap:8px"><button class="round" data-share="'+p.id+'" aria-label="Partager">'+SHARE+'</button><button class="round" data-fav="'+p.id+'" aria-label="'+(fav?"Retirer des favoris":"Ajouter aux favoris")+'" aria-pressed="'+fav+'">'+heart(fav)+'</button></span></div>'+
+  '<div class="ovbody">'+heroHtml(p)+
+  '<div style="display:flex;flex-direction:column;gap:6px"><h2 class="headline" style="font-size:28px">'+esc(p.name)+'</h2><span class="label">'+esc(p.area)+' · '+esc(travel(k))+' depuis '+esc(here()[0])+'</span>'+
+  '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+catTag(p)+'<span class="tag">'+esc(ageText(p))+'</span><span class="tag">'+esc(p.io)+'</span>'+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(p.offer?'<span class="tag" style="background:#FF5B2E">−'+p.offer+' % On sort</span>':'')+'</div>'+
+  (!fit.all?'<span style="font-size:13px;font-weight:600;color:#A8300C">Pas adapté à '+fit.miss.map(function(x){return x?x+" ans":"bébé";}).join(" ni à ")+'</span>':'')+'</div>'+
+  '<p style="margin:0;line-height:1.5">'+esc(p.desc)+'</p><div class="facts">'+rows+'</div>'+
+  '<p class="banner">Infos de test, indicatives. Dans l\'appli finale : source et heure de mise à jour (Que faire à Paris, DATAtourisme, OpenAgenda ou le lieu lui-même).</p></div>'+
+  '<div class="ovfoot">'+(bookable?'<a class="ghost" href="'+dir+'" target="_blank" rel="noopener">Y aller</a><button class="cta" data-book="'+p.id+'">Réserver'+(p.offer?' · −'+p.offer+' %':'')+'</button>':'<a class="cta" href="'+dir+'" target="_blank" rel="noopener">Y aller</a>')+'</div>';
+  ov(h);
+}
+var BK={ad:2,en:2};
+function openBook(id){
+  var p=P.filter(function(x){return x.id===id;})[0];
+  var sub=BK.ad*p.ad+BK.en*p.en,off=p.offer?Math.round(sub*p.offer)/100:0,tot=sub-off;
+  var h='<div class="ovtop"><button class="round" data-open="'+p.id+'" aria-label="Retour">'+BACK+'</button><span></span></div><div class="ovbody"><h2 class="bigtitle" style="font-size:30px">Réserver</h2><span class="label">'+esc(p.name)+' · '+esc(fmtDay(S.date))+'</span>'+
+  '<div><div class="stepper"><span style="font-weight:600;font-size:16px">Adultes · '+(p.ad?eur(p.ad):"gratuit")+'</span><div><button data-step="ad,-1" aria-label="Un adulte de moins">−</button><b>'+BK.ad+'</b><button data-step="ad,1" aria-label="Un adulte de plus">+</button></div></div>'+
+  '<div class="stepper"><span style="font-weight:600;font-size:16px">Enfants · '+(p.en?eur(p.en):"gratuit")+'</span><div><button data-step="en,-1" aria-label="Un enfant de moins">−</button><b>'+BK.en+'</b><button data-step="en,1" aria-label="Un enfant de plus">+</button></div></div></div>'+
+  '<div class="facts"><div class="fact"><span>Sous-total</span><span>'+eur(sub)+'</span></div>'+(p.offer?'<div class="fact"><span>Offre On sort −'+p.offer+' %</span><span style="color:#B8360F">−'+eur(off)+'</span></div>':'')+'<div class="fact"><span style="color:#0B0B0B;font-weight:700">Total</span><span style="font-size:18px">'+eur(tot)+'</span></div></div>'+
+  '<p class="banner">Démonstration : aucun paiement, le billet créé est fictif.</p></div><div class="ovfoot"><button class="cta" data-confirm="'+p.id+'"'+(BK.ad+BK.en?"":" disabled")+'>Confirmer · '+eur(tot)+'</button></div>';
+  ov(h);
+}
+function openTicket(i){
+  var t=S.tickets[i],p=P.filter(function(x){return x.id===t.id;})[0];
+  var h='<div class="ovtop"><span></span><button class="round" data-act="close" aria-label="Fermer" style="background:#0B0B0B;color:#fff">'+X+'</button></div><div class="ovbody"><h2 class="bigtitle" style="font-size:52px;letter-spacing:-2px;line-height:.95">C’est<br>réservé.</h2>'+
+  '<div class="tcard"><div style="display:flex;gap:14px;align-items:center"><canvas id="qr" width="105" height="105" role="img" aria-label="QR code fictif du billet"></canvas><div style="display:flex;flex-direction:column;gap:4px"><b style="font-size:18px;line-height:1.2">'+esc(p.name)+'</b><span class="label">Billet de démonstration</span></div></div><div style="height:1px;background:#E6E6E2"></div>'+
+  '<div class="grid2"><div><small>Quand</small><b>'+esc(fmtDay(new Date(t.date)))+'</b></div><div><small>Qui</small><b>'+t.ad+' ad. · '+t.en+' enf.</b></div><div><small>Total</small><b>'+eur(t.total)+'</b></div><div><small>Économisé</small><b style="color:#B8360F">'+eur(t.saved)+'</b></div></div></div></div>'+
+  '<div class="ovfoot" style="background:transparent;border:none;flex-direction:column"><button class="cta" data-share="'+p.id+'">Envoyer à la famille</button></div>';
+  var d=ov(h);d.classList.add("ticket");
+  var c=d.querySelector("#qr").getContext("2d"),n=21,s=5,seed=t.date%997+7;
+  function rnd(){seed=(seed*9301+49297)%233280;return seed/233280;}
+  c.fillStyle="#fff";c.fillRect(0,0,105,105);c.fillStyle="#0B0B0B";
+  function fin(r,cc,r0,c0){var y=r-r0,x=cc-c0;if(y<0||x<0||y>6||x>6)return null;return y===0||y===6||x===0||x===6||(y>1&&y<5&&x>1&&x<5);}
+  for(var r=0;r<n;r++)for(var cc=0;cc<n;cc++){var f=fin(r,cc,0,0);if(f===null)f=fin(r,cc,0,14);if(f===null)f=fin(r,cc,14,0);var z=(r<8&&cc<8)||(r<8&&cc>12)||(r>12&&cc<8);var on=f!==null?f:(z?false:rnd()>.5);if(on)c.fillRect(cc*s,r*s,s,s);}
+}
+function openWhere(){
+  var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Je pars de…</b><button class="round" data-act="close" aria-label="Fermer">'+X+'</button></div><div class="ovbody" style="gap:0"><button class="pick" data-act="gps">Ma position (GPS)'+(S.geo?'<span style="color:#2F6BFF">Ici</span>':'')+'</button>'+
+  PLACES.map(function(pl,i){return '<button class="pick" data-where="'+i+'">'+esc(pl[0])+(!S.geo&&i===S.where?'<span style="color:#2F6BFF">Ici</span>':'')+'</button>';}).join("")+'</div></div>';
+  ov(h,true);
+}
+function openDate(){
+  var opts=[["Aujourd'hui",TODAY],["Demain",addDays(TODAY,1)]],sat=addDays(TODAY,(6-TODAY.getDay()+7)%7||7),sun=nextSunday(),hol=nextHoliday();
+  opts.push(["Samedi "+sat.getDate(),sat]);opts.push(["Dimanche "+sun.getDate(),sun]);if(hol)opts.push([fmtDay(hol),hol,holName(hol)]);
+  opts.sort(function(a,b){return a[1]-b[1];});
+  var seen={};opts=opts.filter(function(o){var k2=key(o[1]);if(seen[k2])return false;seen[k2]=1;return true;});
+  var v=S.date.getFullYear()+"-"+String(S.date.getMonth()+1).padStart(2,"0")+"-"+String(S.date.getDate()).padStart(2,"0");
+  var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Quand ?</b><button class="round" data-act="close" aria-label="Fermer">'+X+'</button></div><div class="ovbody" style="gap:0">'+
+  opts.map(function(o){var hn=o[2]||holName(o[1]);return '<button class="pick" data-date="'+o[1].getTime()+'"><span>'+esc(o[0])+(key(o[1])===key(S.date)?' <span style="color:#2F6BFF">·  choisi</span>':'')+'</span>'+(hn?'<span style="color:#B8360F;font-weight:600">'+esc(hn)+'</span>':'')+'</button>';}).join("")+
+  '<label for="dpick" class="label" style="margin:16px 0 8px">Une autre date</label><input type="date" id="dpick" value="'+v+'"></div></div>';
+  var o=ov(h,true);
+  o.querySelector("#dpick").addEventListener("change",function(e){var q=e.target.value.split("-");if(q.length===3){S.date=new Date(+q[0],+q[1]-1,+q[2]);closeOv();render();}});
+}
+function openFam(){
+  var f=S.fam||{ad:2,kids:[]};
+  var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Qui vient ?</b><button class="round" data-act="famdone" aria-label="Fermer">'+X+'</button></div><div class="ovbody">'+
+  '<div class="stepper" style="border-top:1px solid #E6E6E2"><span style="font-weight:600;font-size:16px">Adultes</span><div><button data-famad="-1" aria-label="Un adulte de moins">−</button><b>'+f.ad+'</b><button data-famad="1" aria-label="Un adulte de plus">+</button></div></div>'+
+  '<span class="label">Enfants '+(f.kids.length?'· touche pour retirer':'')+'</span><div style="display:flex;gap:8px;flex-wrap:wrap">'+(f.kids.length?f.kids.map(function(k,i){return '<button class="chip" aria-pressed="true" data-kidrm="'+i+'" aria-label="Retirer l’enfant de '+k+' ans">'+(k?k+" an"+(k>1?"s":""):"Bébé")+'  ✕</button>';}).join(""):'<span class="rowsub">Aucun enfant ajouté</span>')+'</div>'+
+  '<span class="label">Ajouter un enfant de…</span><div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(function(a){return '<button class="chip" style="padding:0" data-kidadd="'+a+'">'+(a?a+" an"+(a>1?"s":""):"Bébé")+'</button>';}).join("")+'</div></div>'+
+  '<div class="ovfoot"><button class="cta" data-act="famdone">Voir les sorties</button></div></div>';
+  ov(h,true);
+}
+function share(id){
+  var p=P.filter(function(x){return x.id===id;})[0];
+  var txt="On y va ? "+p.name+" ("+p.area+"), "+fmtDay(S.date)+". Trouvé sur On sort.";
+  var done=function(){toast("Message copié, colle-le dans WhatsApp");};
+  try{navigator.clipboard.writeText(txt).then(done,function(){toast(txt);});}catch(e){toast(txt);}
+}
+
+/* ---------- Événements ---------- */
+document.getElementById("app").addEventListener("click",function(e){
+  var el=e.target.closest("[data-quick],[data-famad],[data-kidadd],[data-kidrm],[data-tab],[data-act],[data-date],[data-budget],[data-age],[data-io],[data-cat],[data-zoom],[data-open],[data-fav],[data-book],[data-step],[data-confirm],[data-ticket],[data-where],[data-share]");
+  if(SUPPRESS&&e.target.closest("#map,.grabbtn"))return;
+  if(!el){if(e.target.classList.contains("dim"))closeOv();return;}
+  var d=el.dataset;
+  if(d.tab){S.tab=d.tab;closeOv();render();return;}
+  if(d.act==="close"){closeOv();return;}
+  if(d.act==="fam"){openFam();return;}
+  if(d.act==="gps"){requestGPS(true);return;}
+  if(d.act==="famdone"){if(!S.fam){S.fam={ad:2,kids:[]};save("fam",S.fam);}closeOv();render();return;}
+  if(d.act==="clearq"){S.q="";render();return;}
+  if(d.act==="sheet"){S.full=!S.full;render();return;}
+  if(d.act==="zin"||d.act==="zout"){if(PROJ)zoomAt(PROJ.W/2,PROJ.oy,d.act==="zin"?1.7:1/1.7);return;}
+  if(d.act==="recenter"){MV={z:1,c:null};drawMap(results());return;}
+  if(d.act==="where"){openWhere();return;}
+  if(d.act==="date"){openDate();return;}
+  if(d.act==="reset"){S.q="";S.ages=[];S.budget="all";S.io="all";S.cat="all";render();return;}
+  if(d.quick){S.quick[d.quick]=!S.quick[d.quick];render();return;}
+  if(d.famad){S.fam=S.fam||{ad:2,kids:[]};S.fam.ad=Math.max(1,Math.min(6,S.fam.ad+(+d.famad)));save("fam",S.fam);openFam();render();return;}
+  if(d.kidadd!=null){S.fam=S.fam||{ad:2,kids:[]};if(S.fam.kids.length<8)S.fam.kids.push(+d.kidadd);save("fam",S.fam);openFam();render();return;}
+  if(d.kidrm!=null){S.fam.kids.splice(+d.kidrm,1);save("fam",S.fam);openFam();render();return;}
+  if(d.date){S.date=new Date(+d.date);closeOv();render();return;}
+  if(d.budget){S.budget=d.budget;render();return;}
+  if(d.age){var i=+d.age,ix=S.ages.indexOf(i);if(ix>=0)S.ages.splice(ix,1);else S.ages.push(i);render();return;}
+  if(d.io){S.io=d.io;if(d.io==="all")S.cat="all";render();return;}
+  if(d.cat){S.cat=S.cat===d.cat?"all":d.cat;render();return;}
+  if(d.zoom){S.zoom=d.zoom;MV={z:1,c:null};render();return;}
+  if(d.where){S.geo=null;S.where=+d.where;MV={z:1,c:null};save("where",S.where);closeOv();render();return;}
+  if(d.fav){var j=S.favs.indexOf(d.fav);if(j>=0)S.favs.splice(j,1);else S.favs.push(d.fav);save("favs",S.favs);if(S.tab==="favs")render();openPlace(d.fav);toast(j>=0?"Retiré des favoris":"Ajouté aux favoris");return;}
+  if(d.book){var bp=P.filter(function(x){return x.id===d.book;})[0];BK=S.fam?{ad:S.fam.ad,en:S.fam.kids.filter(function(k){return !(bp.free3&&k<3);}).length}:{ad:2,en:2};openBook(d.book);return;}
+  if(d.step){var s=d.step.split(","),pid=document.querySelector("[data-confirm]").dataset.confirm;BK[s[0]]=Math.max(0,Math.min(9,BK[s[0]]+(+s[1])));openBook(pid);return;}
+  if(d.confirm){var p=P.filter(function(x){return x.id===d.confirm;})[0],sub=BK.ad*p.ad+BK.en*p.en,off=p.offer?Math.round(sub*p.offer)/100:0;S.tickets.push({id:p.id,date:S.date.getTime(),ad:BK.ad,en:BK.en,total:sub-off,saved:off});save("tickets",S.tickets);if(S.tab==="tickets")render();openTicket(S.tickets.length-1);return;}
+  if(d.ticket){openTicket(+d.ticket);return;}
+  if(d.share){share(d.share);return;}
+  if(d.open){openPlace(d.open);return;}
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeOv();});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){if(S.tab==="explore")drawMap(results());},120);});
+render();
+requestGPS(false);
+loadPhotos();
+})();
+</script>
+
+</html>
