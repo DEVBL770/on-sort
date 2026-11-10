@@ -71,6 +71,18 @@ a{color:inherit}
 .scroll>*{flex-shrink:0}
 .tile img{width:100%;height:100%;object-fit:cover;display:block}
 .hero img{width:100%;height:100%;object-fit:cover;display:block}
+.card{display:flex;flex-direction:column;gap:8px;padding:12px 0 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.strip{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:16px}
+.strip::-webkit-scrollbar{display:none}
+.strip img{flex:0 0 86%;height:190px;object-fit:cover;border-radius:16px;scroll-snap-align:start;background:var(--soft)}
+.strip img:only-child{flex-basis:100%}
+.cardinfo{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%}
+.gal{position:relative;height:260px;border-radius:22px;overflow:hidden;flex:0 0 auto;background:var(--soft)}
+.galtrack{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.galtrack::-webkit-scrollbar{display:none}
+.galtrack img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center}
+.galcount,.galcat{position:absolute;bottom:12px;background:var(--paper);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700}
+.galcount{right:12px}.galcat{left:12px}
 .credit{font-size:11px;color:var(--muted);line-height:1.4;margin-top:-8px}
 .credit a{color:var(--muted)}
 .sum{display:flex;gap:8px;flex-wrap:wrap}
@@ -307,17 +319,20 @@ function toast(t){var el=document.createElement("div");el.className="toast";el.t
 function ill(id,extra){var d=ILL[id]||["#F2F2F0",""];return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
 /* ---------- Photos Wikimedia Commons (chargées par le navigateur, crédit obligatoire) ---------- */
 var PQ={acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
-var PH=load("ph.v1",{});
+var PH=load("ph.v2",{});
+function ph1(id){var a=PH[id];return a&&a.length?a[0]:null;}
 function stripHtml(h){try{return (new DOMParser().parseFromString(h||"","text/html").body.textContent||"").trim().replace(/\s+/g," ");}catch(e){return "";}}
 function fetchPhoto(id){
   var q=PQ[id];if(!q)return Promise.resolve(null);
-  var u="https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=8&gsrsearch="+encodeURIComponent(q+" filetype:bitmap")+"&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=900&iiextmetadatafilter=Artist|LicenseShortName";
+  var u="https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=25&gsrsearch="+encodeURIComponent(q+" filetype:bitmap")+"&prop=imageinfo&iiprop=url|extmetadata|mime|size&iiurlwidth=1000&iiextmetadatafilter=Artist|LicenseShortName";
   return fetch(u).then(function(r){return r.json();}).then(function(j){
     var pages=j&&j.query&&j.query.pages?Object.keys(j.query.pages).map(function(k){return j.query.pages[k];}):[];
     pages.sort(function(a,b){return (a.index||0)-(b.index||0);});
-    for(var i=0;i<pages.length;i++){var pg=pages[i],ii=pg.imageinfo&&pg.imageinfo[0];if(!ii||ii.mime!=="image/jpeg"||ii.width<900||/map|plan|carte|logo|blason/i.test(pg.title))continue;
-      var md=ii.extmetadata||{};return {t:ii.thumburl||ii.url,a:stripHtml(md.Artist&&md.Artist.value)||"Auteur inconnu",l:(md.LicenseShortName&&md.LicenseShortName.value)||"Licence libre",u:ii.descriptionurl};}
-    return null;
+    var out=[];
+    for(var i=0;i<pages.length&&out.length<5;i++){var pg=pages[i],ii=pg.imageinfo&&pg.imageinfo[0];
+      if(!ii||ii.mime!=="image/jpeg"||ii.width<1000||ii.width<ii.height*0.9||/map|plan|carte|logo|blason|panneau|affiche|gravure|dessin|lithograph|engraving|\b1[6-8]\d\d\b|\b19[0-4]\d\b/i.test(pg.title))continue;
+      var md=ii.extmetadata||{};out.push({t:ii.thumburl||ii.url,a:stripHtml(md.Artist&&md.Artist.value)||"Auteur inconnu",l:(md.LicenseShortName&&md.LicenseShortName.value)||"Licence libre",u:ii.descriptionurl});}
+    return out.length?out:null;
   });
 }
 var phTimer=0;function phRender(){clearTimeout(phTimer);phTimer=setTimeout(function(){if(!document.querySelector(".overlay"))render();},250);}
@@ -326,15 +341,20 @@ function loadPhotos(){
   var todo=Object.keys(PQ).filter(function(id){return !PH[id];}),busy=0,fails=0;
   function next(){
     if(!todo.length||fails>3)return;var id=todo.shift();busy++;
-    fetchPhoto(id).then(function(ph){if(ph){PH[id]=ph;save("ph.v1",PH);phRender();}},function(){fails++;}).then(function(){busy--;next();});
+    fetchPhoto(id).then(function(ph){if(ph){PH[id]=ph;save("ph.v2",PH);phRender();}},function(){fails++;}).then(function(){busy--;next();});
   }
   for(var k=0;k<4;k++)next();
 }
-function tile(p){var ph=PH[p.id];return '<span class="tile">'+(ph?'<img src="'+esc(ph.t)+'" alt="" loading="lazy" onerror="this.remove()">':ill(p.id))+'</span>';}
+function tile(p){var ph=ph1(p.id);return '<span class="tile">'+(ph?'<img src="'+esc(ph.t)+'" alt="" loading="lazy" onerror="this.remove()">':ill(p.id))+'</span>';}
 function heroHtml(p){
-  var ph=PH[p.id];
-  if(ph)return '<div class="hero" style="background:'+(ILL[p.id]||["#F2F2F0"])[0]+'"><img src="'+esc(ph.t)+'" alt="Photo : '+esc(p.name)+'"><span>'+esc(p.cat)+'</span></div><div class="credit">Photo : <a href="'+esc(ph.u)+'" target="_blank" rel="noopener">'+esc(ph.a)+'</a> · '+esc(ph.l)+' · Wikimedia Commons</div>';
+  var a=PH[p.id];
+  if(a&&a.length)return '<div class="gal"><div class="galtrack" id="galtrack">'+a.map(function(ph,i){return '<img src="'+esc(ph.t)+'" alt="Photo '+(i+1)+' : '+esc(p.name)+'"'+(i?' loading="lazy"':'')+' onerror="this.remove()">';}).join("")+'</div><span class="galcount" id="galcount">1 / '+a.length+'</span><span class="galcat">'+esc(p.cat)+'</span></div><div class="credit" id="galcredit">'+creditHtml(a[0])+'</div>';
   return '<div class="hero" style="background:'+(ILL[p.id]||["#F2F2F0"])[0]+'">'+ill(p.id).replace(/<rect x="0" y="(\d+)" width="64"/g,'<rect x="-200" y="$1" width="464"')+'<span>'+esc(p.cat)+'</span></div>';
+}
+function creditHtml(ph){return 'Photo : <a href="'+esc(ph.u)+'" target="_blank" rel="noopener">'+esc(ph.a)+'</a> · '+esc(ph.l)+' · Wikimedia Commons';}
+function bindGallery(p){
+  var tr=document.getElementById("galtrack"),a=PH[p.id];if(!tr||!a)return;
+  tr.addEventListener("scroll",function(){var i=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));i=Math.max(0,Math.min(a.length-1,i));document.getElementById("galcount").textContent=(i+1)+" / "+a.length;document.getElementById("galcredit").innerHTML=creditHtml(a[i]);},{passive:true});
 }
 function requestGPS(show){
   try{
@@ -387,7 +407,7 @@ function drawMap(list){
     var d=ILL[p.id]||["#F2F2F0",""],txt=p.offer?("−"+p.offer+" %"):shortPrice(p),w=txt.length*6.6+12,cb=p.offer?"#FF5B2E":"#0B0B0B",cf=p.offer?"#0B0B0B":"#FFFFFF";
     s+='<g class="pin" data-open="'+p.id+'"><path d="M'+(q[0]-5)+' '+(ay+14)+' L'+q[0]+' '+q[1]+' L'+(q[0]+5)+' '+(ay+14)+'Z" fill="#fff"/>'+
       '<clipPath id="pc'+n+'"><circle cx="'+q[0].toFixed(1)+'" cy="'+ay.toFixed(1)+'" r="16"/></clipPath><circle cx="'+q[0].toFixed(1)+'" cy="'+ay.toFixed(1)+'" r="19" fill="#fff"/>'+
-      '<g clip-path="url(#pc'+n+')">'+(PH[p.id]?'<image href="'+esc(PH[p.id].t)+'" x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>':'<svg x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" viewBox="0 0 64 64"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>')+'</g>'+
+      '<g clip-path="url(#pc'+n+')">'+(ph1(p.id)?'<image href="'+esc(ph1(p.id).t)+'" x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>':'<svg x="'+(q[0]-16).toFixed(1)+'" y="'+(ay-16).toFixed(1)+'" width="32" height="32" viewBox="0 0 64 64"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>')+'</g>'+
       '<rect x="'+(q[0]+8).toFixed(1)+'" y="'+(ay-24).toFixed(1)+'" width="'+w.toFixed(1)+'" height="17" rx="8.5" fill="'+cb+'" stroke="#fff" stroke-width="1.5"/><text x="'+(q[0]+8+w/2).toFixed(1)+'" y="'+(ay-12).toFixed(1)+'" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-size="10.5" font-weight="700" fill="'+cf+'">'+esc(txt)+'</text>'+
       (MV.z>2.2?'<text x="'+q[0].toFixed(1)+'" y="'+(q[1]+14).toFixed(1)+'" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0B0B0B" stroke="#FFF6E5" stroke-width="3" paint-order="stroke">'+esc(p.name.length>26?p.name.slice(0,24)+"…":p.name)+'</text>':'')+'</g>';
   });
@@ -453,10 +473,17 @@ function renderExplore(){
   html+='<p class="banner">Version de test. Photos : Wikimedia Commons (auteur et licence dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu. Les offres −10 % et les réservations sont des démonstrations, aucun paiement n\'est fait.</p>';
   return html+'</div></div>';
 }
-function rowHtml(p){
+function rowCompact(p){
   var k=km(p),st=hoursStatus(p),fit=ageFit(p);
   var sub=travel(k)+(st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
   return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
+}
+function rowHtml(p){
+  var a=PH[p.id];if(!a||!a.length)return rowCompact(p);
+  var k=km(p),st=hoursStatus(p),fit=ageFit(p);
+  var sub=travel(k)+(st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
+  return '<div class="card'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'"><div class="strip">'+a.map(function(ph,i){return '<img src="'+esc(ph.t)+'" alt=""'+(i?' loading="lazy"':'')+' onerror="this.remove()">';}).join("")+'</div>'+
+    '<button class="cardinfo" data-open="'+p.id+'"><span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button></div>';
 }
 function renderFavs(){
   var html='<div class="plain"><h1 class="bigtitle">Mes sorties</h1>';
@@ -495,7 +522,7 @@ function openPlace(id){
   '<p style="margin:0;line-height:1.5">'+esc(p.desc)+'</p><div class="facts">'+rows+'</div>'+
   '<p class="banner">Infos de test, indicatives. Dans l\'appli finale : source et heure de mise à jour (Que faire à Paris, DATAtourisme, OpenAgenda ou le lieu lui-même).</p></div>'+
   '<div class="ovfoot">'+(bookable?'<a class="ghost" href="'+dir+'" target="_blank" rel="noopener">Y aller</a><button class="cta" data-book="'+p.id+'">Réserver'+(p.offer?' · −'+p.offer+' %':'')+'</button>':'<a class="cta" href="'+dir+'" target="_blank" rel="noopener">Y aller</a>')+'</div>';
-  ov(h);
+  ov(h);bindGallery(p);
 }
 var BK={ad:2,en:2};
 function openBook(id){
