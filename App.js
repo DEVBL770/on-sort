@@ -3,13 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, Image, Modal, StyleSheet,
-  Linking, Share, Platform, StatusBar, useWindowDimensions, ActivityIndicator,
+  Linking, Share, Platform, StatusBar, useWindowDimensions, ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SvgXml } from 'react-native-svg';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 /* ============ Données (reprises de la version web) ============ */
 var ALL=[0,1,2,3,4,5,6], NOMON=[0,2,3,4,5,6], NOTUE=[0,1,3,4,5,6];
@@ -106,7 +104,9 @@ var PQ={orsay:"Musée d'Orsay nef",carnavalet:"Musée Carnavalet",mam:"Musée d'
 
 
 const C = { ink: '#0B0B0B', paper: '#FFFFFF', soft: '#F2F2F0', line: '#E6E6E2', muted: '#5E5E5A', accent: '#FF5B2E', accentInk: '#A8300C', blue: '#2F6BFF', green: '#1E6B3A' };
-const LOGO = '<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#FF5B2E"/><path d="M60.85 66.14 A22 22 0 1 1 60.85 37.86" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/><path d="M44 52 H80" stroke="#0B0B0B" stroke-width="10" stroke-linecap="round"/><path d="M69 40.5 L81 52 L69 63.5" fill="none" stroke="#0B0B0B" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const WEB = 'https://devbl770.github.io/on-sort';
+const LOGO_URI = WEB + '/icon-192.png';
+const LOGO_UNUSED = '<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#FF5B2E"/><path d="M60.85 66.14 A22 22 0 1 1 60.85 37.86" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/><path d="M44 52 H80" stroke="#0B0B0B" stroke-width="10" stroke-linecap="round"/><path d="M69 40.5 L81 52 L69 63.5" fill="none" stroke="#0B0B0B" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function illXml(id) { const d = ILL[id] || ['#F2F2F0', '']; return '<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="' + d[0] + '"/>' + d[1] + '</svg>'; }
 
 /* ============ Dates : fériés, vacances zone C, 1er dimanche ============ */
@@ -232,7 +232,8 @@ async function loadJSON(k, d) { try { const v = await AsyncStorage.getItem('onso
 function saveJSON(k, v) { AsyncStorage.setItem('onsort.' + k, JSON.stringify(v)).catch(() => { }); }
 
 /* ============ Petits composants ============ */
-function Ill({ id, size }) { return <SvgXml xml={illXml(id)} width={size} height={size} />; }
+function Ill({ id, size }) { return ILL[id] ? <Image source={{ uri: WEB + '/ill/' + id + '.png' }} style={{ width: size, height: size }} /> : <View style={{ width: size, height: size, backgroundColor: '#FFE1EC' }} />; }
+function Logo({ size }) { return <Image source={{ uri: LOGO_URI }} style={{ width: size, height: size, borderRadius: size * 0.24 }} />; }
 function Thumb({ p, photos, size = 58, radius = 16 }) {
   const ph = photos[p.id] && photos[p.id][0];
   return <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: (ILL[p.id] || ['#F2F2F0'])[0] }}>{ph ? <Image source={{ uri: ph.t }} style={{ width: size, height: size }} /> : <Ill id={p.id} size={size} />}</View>;
@@ -256,7 +257,7 @@ function Sheet({ visible, onClose, title, children, footer }) {
 /* ============ Appli ============ */
 const QUICK = [['free', 'Gratuit'], ['dry', 'À l’abri'], ['near', 'À 20 min'], ['deal', 'Offres']];
 export default function App() {
-  return <SafeAreaProvider><Main /></SafeAreaProvider>;
+  return <Main />;
 }
 function Main() {
   const { width, height } = useWindowDimensions();
@@ -299,7 +300,7 @@ function Main() {
   const recenter = () => { const h = L.here; mapRef.current && mapRef.current.animateCamera({ center: { latitude: h[1], longitude: h[2] }, zoom: 13, heading: 0, pitch: 30 }, { duration: 600 }); };
   useEffect(() => { if (ready) recenter(); }, [geo, where, ready]);
 
-  if (!ready) return <View style={[s.fill, { alignItems: 'center', justifyContent: 'center' }]}><SvgXml xml={LOGO} width={84} height={84} /><ActivityIndicator style={{ marginTop: 20 }} /></View>;
+  if (!ready) return <View style={[s.fill, { alignItems: 'center', justifyContent: 'center' }]}><Logo size={84} /><ActivityIndicator style={{ marginTop: 20 }} /></View>;
 
   const whenText = key(date) === key(TODAY) ? "Aujourd'hui" : key(date) === key(addDays(TODAY, 1)) ? 'Demain' : fmtDay(date) + (hol ? ' · férié' : firstSun(date) ? ' · 1er dim.' : '');
   const list = L.results;
@@ -350,7 +351,7 @@ function Main() {
           ))}
         </MapView>
         <View style={s.topbar} pointerEvents="box-none">
-          <View style={s.logo}><SvgXml xml={LOGO} width={26} height={26} /><Text style={s.logoT}>on sort<Text style={{ color: C.accent }}>.</Text></Text></View>
+          <View style={s.logo}><Logo size={26} /><Text style={s.logoT}>on sort<Text style={{ color: C.accent }}>.</Text></Text></View>
           <Pressable style={s.pill} onPress={() => setSheet('where')}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.blue }} /><Text style={s.pillT}>{L.here[0]}</Text></Pressable>
         </View>
         <Pressable style={s.recenter} onPress={recenter} accessibilityLabel="Recentrer sur mon point de départ"><Text style={{ fontSize: 20 }}>◎</Text></Pressable>
@@ -432,7 +433,7 @@ function Main() {
     const p = sel, a = photos[p.id], fav = favs.indexOf(p.id) >= 0, op = isOpen(p, date), st2 = L.hoursStatus(p), fit = L.ageFit(p), e = L.eff(p), ft = L.famTotal(p);
     return (
       <Modal visible animationType="slide" onRequestClose={() => setOpen(null)}>
-        <SafeAreaView style={s.fill} edges={['top', 'bottom']}>
+        <SafeAreaView style={s.fill}>
           <View style={s.ovtop}>
             <Pressable style={s.round} onPress={() => setOpen(null)} accessibilityLabel="Retour"><Text style={{ fontSize: 20, fontWeight: '700' }}>‹</Text></Pressable>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -476,10 +477,10 @@ function Main() {
   const pk = L.picks.length ? L.picks[pickN % L.picks.length] : null;
 
   return (
-    <SafeAreaView style={s.fill} edges={['top']}>
+    <SafeAreaView style={s.fill}>
       <StatusBar barStyle="dark-content" />
       {tab === 'explore' ? explore : tab === 'favs' ? mine : account}
-      <SafeAreaView edges={['bottom']} style={s.tabs}>
+      <SafeAreaView style={s.tabs}>
         {[['explore', 'Explorer'], ['favs', 'Mes sorties'], ['me', 'Compte']].map((t) => (
           <Pressable key={t[0]} style={s.tabB} onPress={() => setTab(t[0])} accessibilityRole="tab" accessibilityState={{ selected: tab === t[0] }}>
             <View style={[s.tabDot, tab === t[0] && { backgroundColor: C.accent }]} /><Text style={[s.tabT, tab === t[0] && { color: C.ink }]}>{t[1]}</Text>

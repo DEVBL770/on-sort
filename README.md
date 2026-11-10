@@ -8,7 +8,7 @@ Version native d'On sort : carte Apple Plans (rotation, inclinaison), GPS, photo
 git clone -b expo-app https://github.com/DEVBL770/on-sort.git on-sort-app
 cd on-sort-app
 npm install
-npx expo install react react-native react-native-maps expo-location @react-native-async-storage/async-storage react-native-svg react-native-safe-area-context
+npx expo install react react-native react-native-maps expo-location @react-native-async-storage/async-storage
 npx expo start --tunnel
 ```
 
