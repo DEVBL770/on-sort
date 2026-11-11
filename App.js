@@ -147,6 +147,14 @@ function norm(t) { return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '
 function stripHtml(h) { return String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, '’').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim(); }
 function ageText(p) { return p.a[1] >= 99 ? (p.a[0] === 0 ? 'Tous âges' : 'Dès ' + p.a[0] + ' ans') : p.a[0] + '–' + p.a[1] + ' ans'; }
 
+function ranges(txt) { const out = []; const re = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/g; let m; while ((m = re.exec(txt || ''))) out.push({ o: +m[1] * 60 + (+m[2] || 0), c: +m[3] * 60 + (+m[4] || 0) }); return out; }
+function hm(x) { const h = Math.floor(x / 60), m = x % 60; return h + 'h' + (m ? String(m).padStart(2, '0') : ''); }
+/* Horaires des 7 prochains jours à partir de la date choisie */
+function weekHours(p, from) {
+  const rows = []; let known = 0;
+  for (let i = 0; i < 7; i++) { const d = addDays(from, i), op = isOpen(p, d), h = op ? hoursFor(p, d) : ''; if (!op || /\dh/.test(h)) known++; rows.push({ d, op, h: op ? (/\dh/.test(h) ? h : 'Ouvert') : 'Fermé', hol: holName(d) }); }
+  return known >= 4 ? rows : null;
+}
 function makeLogic(st) {
   const here = st.geo || PLACES[st.where] || PLACES[10];
   const km = (p) => dist(here[1], here[2], p.lat, p.lng);
@@ -164,13 +172,14 @@ function makeLogic(st) {
   const shortPrice = (p) => { if (p.offer) return '−' + p.offer + ' %'; const c = kidCost(p), e = eff(p); if (c === 0 && e.ad === 0) return 'Gratuit'; if (e.en === 0) return '0 € enf.'; if (c == null) return '€'; return eur(c); };
   const ageFit = (p) => { if (!st.fam || !st.fam.kids.length) return { ok: true, all: true, miss: [] }; const miss = st.fam.kids.filter((k) => !(p.a[0] <= k && p.a[1] >= k)); return { ok: miss.length < st.fam.kids.length, all: !miss.length, miss }; };
   const hoursStatus = (p) => {
-    if (key(st.date) !== key(TODAY)) return null;
-    const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(hoursFor(p, st.date)); if (!m) return null;
-    const d = new Date(), n = d.getHours() * 60 + d.getMinutes(), o = +m[1] * 60 + (+m[2] || 0), c = +m[3] * 60 + (+m[4] || 0), cl = m[3] + 'h' + (m[4] || '');
-    if (n < o) return { t: 'Ouvre à ' + m[1] + 'h' + (m[2] || ''), c: '#6E4D00' };
-    if (n >= c) return { t: "Fermé pour aujourd'hui", c: C.accentInk, closed: true };
-    if (c - n <= 60) return { t: 'Ferme bientôt (' + cl + ')', c: C.accentInk };
-    return { t: "Ouvert jusqu'à " + cl, c: C.green };
+    if (key(st.date) !== key(TODAY) || p.evt) return null;
+    const rg = ranges(hoursFor(p, st.date)); if (!rg.length) return null;
+    const d = new Date(), n = d.getHours() * 60 + d.getMinutes();
+    for (const r of rg) {
+      if (n < r.o) return { t: 'Ouvre à ' + hm(r.o), c: '#6E4D00' };
+      if (n < r.c) return r.c - n <= 60 ? { t: 'Ferme bientôt (' + hm(r.c) + ')', c: C.accentInk } : { t: 'Ouvert maintenant · jusqu’à ' + hm(r.c), c: C.green, now: true };
+    }
+    return { t: "Fermé pour aujourd'hui", c: C.accentInk, closed: true };
   };
   const napOk = (p) => { const m = /(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(hoursFor(p, st.date)); if (!m) return true; const o = +m[1] * 60 + (+m[2] || 0), c = +m[3] * 60 + (+m[4] || 0); return 13 * 60 - o >= 120 || c - (15 * 60 + 30) >= 120; };
   const matches = (p) => {
@@ -193,8 +202,23 @@ function makeLogic(st) {
   const results = st.places.filter(matches).map((p) => { const k = km(p); K.set(p.id, k); return { p, k, c: (hoursStatus(p) || {}).closed ? 1 : 0, w: wet(p), f: ageFit(p).all ? 0 : 1 }; })
     .sort((a, b) => a.c - b.c || a.w - b.w || a.f - b.f || a.k - b.k).map((x) => x.p);
   const km0 = km; const kmc = (p) => (K.has(p.id) ? K.get(p.id) : km0(p));
-  const picks = results.slice(0, 300).filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(kmc(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) + (st.rain ? (p.io === 'Plein air' ? -14 : 10) : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
-  return { here, km: kmc, f1Today, eff, famTotal, priceLabel, shortPrice, ageFit, hoursStatus, results, picks, isFree };
+  const done = st.done || {};
+  const quality = (p) => (p.osm ? (p.oh ? 0 : -6) + (st.photos && st.photos[p.id] ? 0 : -8) : 6);
+  const picks = results.slice(0, 300).filter((p) => !(hoursStatus(p) || {}).closed).map((p) => ({ p, sc: -tminK(kmc(p)) + (ageFit(p).all ? 15 : 0) + (isFree(p) ? 8 : 0) + (p.offer ? 6 : 0) + (f1Today(p) ? 10 : 0) + (p.isNew ? 4 : 0) + (st.rain ? (p.io === 'Plein air' ? -14 : 10) : 0) + quality(p) + (done[p.id] ? (done[p.id].r === 'meh' ? -40 : -18) : 0) })).sort((a, b) => b.sc - a.sc).map((x) => x.p);
+  const reasons = (p) => {
+    const r = [], hs = hoursStatus(p), fit = ageFit(p), t = famTotal(p);
+    if (f1Today(p)) r.push(['Gratuit ce 1er dimanche', '#DFF5D3', C.green]);
+    else if (isFree(p)) r.push([st.fam ? 'Gratuit pour vous' : 'Gratuit', '#DFF5D3', C.green]);
+    else if (t != null) r.push(['≈ ' + eur(t) + ' pour vous', C.soft, C.ink]);
+    r.push([travel(kmc(p)), C.soft, C.ink]);
+    if (st.rain && p.io !== 'Plein air') r.push(['À l’abri de la pluie', '#DCE8FF', '#1F4FC2']);
+    if (st.fam && st.fam.kids.length && fit.all) r.push([st.fam.kids.length > 1 ? 'Pour tous tes enfants' : 'Pour son âge', '#FFF0B8', '#6E4D00']);
+    if (hs && !hs.closed) r.push([hs.t.replace('Ouvert maintenant · j', 'J'), C.soft, hs.c]);
+    if (p.offer) r.push(['−' + p.offer + ' % avec On sort', C.accent, C.ink]);
+    if (done[p.id] && done[p.id].r === 'like') r.push(['Vous avez adoré', '#FFE1EC', '#A3164F']);
+    return r.slice(0, 4);
+  };
+  return { here, km: kmc, f1Today, eff, famTotal, priceLabel, shortPrice, ageFit, hoursStatus, results, picks, isFree, reasons };
 }
 function famText(fam) {
   if (!fam) return 'Qui vient ?';
@@ -318,7 +342,7 @@ function osmHours(oh, d) {
     nOk++;
     const days = new Set();
     m[1].split(',').filter(Boolean).forEach((part) => { const [a, b] = part.split('-'); const ia = OD.indexOf(a), ib = b ? OD.indexOf(b) : ia; if (ia < 0 || ib < 0) return; let i = ia; for (let k = 0; k < 7; k++) { days.add(OD[i]); if (i === ib) break; i = (i + 1) % 7; } });
-    if (days.has(wd)) res = m[2] === 'off' || m[2] === 'closed' ? { open: false, txt: '' } : { open: true, txt: m[2].split(',')[0].replace(/(\d\d):00/g, (x, h) => +h + 'h').replace(/(\d\d):(\d\d)/g, (x, h, mm) => +h + 'h' + mm).replace('-', ' – ') };
+    if (days.has(wd)) res = m[2] === 'off' || m[2] === 'closed' ? { open: false, txt: '' } : { open: true, txt: m[2].split(',').map((x) => x.trim().replace(/(\d\d):00/g, (y, h) => +h + 'h').replace(/(\d\d):(\d\d)/g, (y, h, mm) => +h + 'h' + mm).replace('-', ' – ')).join(', ') };
   }
   if (!res && allOk && nOk) return { open: false, txt: '' };
   return res;
@@ -396,6 +420,7 @@ function Main() {
   const [tickets, setTickets] = useState([]);
   const [book, setBook] = useState(null);
   const [ticket, setTicket] = useState(null);
+  const [done, setDone] = useState({});
   const mapRef = useRef(null);
   useEffect(() => { const t = setTimeout(() => setQ(qIn), 250); return () => clearTimeout(t); }, [qIn]);
   const openId = useCallback((id) => setOpen(id), []);
@@ -404,7 +429,7 @@ function Main() {
   const onViewable = useRef(({ viewableItems }) => { viewableItems.forEach((v) => { if (v.item && !photosRef.current[v.item.id]) lazyPhoto(v.item); }); }).current;
 
   useEffect(() => { (async () => {
-    setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true })); setTickets(await loadJSON('tickets', []));
+    setFam(await loadJSON('fam', null)); setWhere(await loadJSON('where', 10)); setFavs(await loadJSON('favs', [])); setMe(await loadJSON('me', { name: '' })); setPrefs(await loadJSON('prefs', { maxMin: null, notif: true })); setTickets(await loadJSON('tickets', [])); setDone(await loadJSON('done', {}));
     const ph = await loadJSON('ph.native.v3', {}); setPhotos(ph); setReady(true);
     try { const { status } = await Location.requestForegroundPermissionsAsync(); if (status === 'granted') { const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }); setGeo(['Ma position', pos.coords.latitude, pos.coords.longitude]); } } catch (e) { }
     try { const h0 = PLACES[await loadJSON('where', 10)] || PLACES[10]; setWx(await fetchWeather(h0[1], h0[2])); } catch (e) { }
@@ -428,12 +453,14 @@ function Main() {
   })(); }, []);
 
   const W = dayWeather(wx, date), rain = !!(W && W.rain >= 60);
-  const st = { geo, where, date, q, quick, fam, prefs, places, rain };
-  const L = useMemo(() => makeLogic(st), [geo, where, date, q, quick, fam, prefs, places, rain]);
+  const phN = Object.keys(photos).length;
+  const st = { geo, where, date, q, quick, fam, prefs, places, rain, done, photos };
+  const L = useMemo(() => makeLogic(st), [geo, where, date, q, quick, fam, prefs, places, rain, done, Math.floor(phN / 25)]);
   const hol = holName(date), vac = vacName(date);
   const sel = open ? places.find((p) => p.id === open) : null;
   const toggleFav = (id) => setFavs((o) => { const n = o.indexOf(id) >= 0 ? o.filter((x) => x !== id) : o.concat(id); saveJSON('favs', n); return n; });
   const setFamS = (f) => { setFam(f); saveJSON('fam', f); };
+  const markDone = (id, r) => setDone((o) => { const n = { ...o }; if (r === null) delete n[id]; else n[id] = { t: (n[id] && n[id].t) || Date.now(), r: r || (n[id] && n[id].r) || '' }; saveJSON('done', n); return n; });
   const recenter = () => { const h = L.here; mapRef.current && mapRef.current.animateCamera({ center: { latitude: h[1], longitude: h[2] }, zoom: 13, heading: 0, pitch: 30 }, { duration: 600 }); };
   useEffect(() => { if (ready) recenter(); }, [geo, where, ready]);
 
@@ -442,7 +469,11 @@ function Main() {
   const whenText = key(date) === key(TODAY) ? "Aujourd'hui" : key(date) === key(addDays(TODAY, 1)) ? 'Demain' : fmtDay(date) + (hol ? ' · férié' : firstSun(date) ? ' · 1er dim.' : '');
   const list = L.results;
 
-  const rowProps = (p) => ({ p, photos: photos[p.id], width, onOpen: openId, fav: favs.indexOf(p.id) >= 0, onFav: toggleFav, sub: travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : ''), st2: L.hoursStatus(p), fit: L.ageFit(p), price: L.priceLabel(p), f1: L.f1Today(p) });
+  const wkend = date.getDay() === 0 || date.getDay() === 6 || !!hol;
+  const nextSun = addDays(TODAY, (7 - TODAY.getDay()) % 7 || 7);
+  const selTitle = key(date) === key(TODAY) ? (hol ? hol + ' : notre sélection' : "Notre sélection pour aujourd'hui") : 'Notre sélection pour ' + (date.getDay() === 0 ? 'dimanche ' + date.getDate() : date.getDay() === 6 ? 'samedi ' + date.getDate() : fmtDay(date));
+  const top = L.picks.slice(0, 6);
+  const rowProps = (p) => ({ p, photos: photos[p.id], width, onOpen: openId, fav: favs.indexOf(p.id) >= 0, onFav: toggleFav, done: !!done[p.id], sub: travel(L.km(p)) + (p.evt ? ' · ' + evDates(p, date) : ''), st2: L.hoursStatus(p), fit: L.ageFit(p), price: L.priceLabel(p), f1: L.f1Today(p) });
 
   /* ----- Explorer ----- */
   const header = (
@@ -463,6 +494,16 @@ function Main() {
         <Text style={s.label}>{fmtDay(date) + (hol ? ' · ' + hol + ', jour férié' : '') + (vac ? ' · ' + vac : '') + (firstSun(date) ? ' · 1er dimanche : musées gratuits' : '') + ' · depuis ' + L.here[0]}</Text>
         {W ? <Text style={[s.label, { color: rain ? '#1F4FC2' : C.muted }]}>{(W.rain >= 60 ? 'Pluie probable (' + W.rain + ' %)' : W.rain >= 30 ? 'Averses possibles (' + W.rain + ' %)' : 'Temps sec') + ' · ' + W.temp + '°'}</Text> : null}
       </View>
+      {!q && top.length ? <View style={{ gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+          <Text style={[s.headline, { fontSize: 22, flex: 1 }]}>{selTitle}</Text>
+          {!wkend && key(date) === key(TODAY) ? <Pressable onPress={() => setDate(nextSun)} hitSlop={8}><Text style={{ fontWeight: '700', color: C.accentInk }}>{'Dimanche ' + nextSun.getDate() + ' ›'}</Text></Pressable> : null}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={width * 0.8 + 12} decelerationRate="fast" contentContainerStyle={{ gap: 12 }}>
+          {top.map((p, i) => <Pick key={p.id} p={p} n={i + 1} a={photos[p.id]} w={width * 0.8} reasons={L.reasons(p)} onOpen={openId} />)}
+        </ScrollView>
+        <Text style={{ fontSize: 12, color: C.muted }}>Choisies selon {[fam && fam.kids.length ? 'l’âge des enfants' : null, W ? 'la météo' : null, 'les horaires', 'la distance'].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' et $1')}.</Text>
+      </View> : null}
       {rain ? <View style={s.rainBox}><Text style={{ fontWeight: '700', color: '#1F4FC2' }}>Plan B pluie activé</Text><Text style={{ fontSize: 13, color: '#1F4FC2' }}>Les sorties à l’abri passent en premier.</Text></View> : null}
       {!q && list.length > 8 ? <View style={{ gap: 18 }}>
         <Carousel title={'Gratuit ' + (key(date) === key(TODAY) ? "aujourd'hui" : 'ce jour-là')} items={list.filter((p) => L.isFree(p)).slice(0, 10)} photos={photos} L={L} onOpen={openId} />
@@ -514,6 +555,7 @@ function Main() {
 
   /* ----- Mes sorties ----- */
   const favList = places.filter((p) => favs.indexOf(p.id) >= 0);
+  const doneList = places.filter((p) => done[p.id]).map((p) => ({ p, d: done[p.id] })).sort((a, b) => b.d.t - a.d.t);
   const mine = (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Text style={s.big}>Mes sorties</Text>
@@ -526,6 +568,14 @@ function Main() {
         </Pressable>); })}
       <Text style={s.label}>Favoris</Text>
       {favList.length ? favList.map((p) => <Row key={p.id} {...rowProps(p)} />) : <Text style={s.rowSub}>Touche le cœur sur une sortie pour la garder ici.</Text>}
+      <Text style={[s.label, { marginTop: 10 }]}>{'Déjà faites' + (doneList.length ? ' · ' + doneList.length : '')}</Text>
+      {doneList.length ? doneList.map(({ p, d }) => (
+        <Pressable key={p.id} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]} onPress={() => setOpen(p.id)}>
+          <Thumb p={p} photos={photos} />
+          <View style={{ flex: 1, gap: 2 }}><Text style={s.rowTitle} numberOfLines={1}>{p.name}</Text><Text style={s.rowSub}>{'Le ' + fmtDay(new Date(d.t))}</Text></View>
+          {d.r ? <Tag bg={d.r === 'like' ? '#FFE1EC' : C.soft} fg={d.r === 'like' ? '#A3164F' : C.muted}>{d.r === 'like' ? 'Adoré' : 'Bof'}</Tag> : null}
+        </Pressable>
+      )) : <Text style={s.rowSub}>Dans une fiche, touche « On y est allés » : on ne vous la reproposera plus en premier.</Text>}
     </ScrollView>
   );
 
@@ -533,7 +583,7 @@ function Main() {
   const savePrefs = (n) => { setPrefs(n); saveJSON('prefs', n); };
   const wipe = () => Alert.alert('Effacer mes données ?', 'Prénom, famille, favoris et préférences seront supprimés de ce téléphone.', [
     { text: 'Annuler', style: 'cancel' },
-    { text: 'Effacer', style: 'destructive', onPress: async () => { try { const ks = (await AsyncStorage.getAllKeys()).filter((k) => k.indexOf('onsort.') === 0 && k.indexOf('onsort.ph') !== 0); await AsyncStorage.multiRemove(ks); } catch (e) { } setFam(null); setFavs([]); setMe({ name: '' }); setPrefs({ maxMin: null, notif: true }); } },
+    { text: 'Effacer', style: 'destructive', onPress: async () => { try { const ks = (await AsyncStorage.getAllKeys()).filter((k) => k.indexOf('onsort.') === 0 && k.indexOf('onsort.ph') !== 0); await AsyncStorage.multiRemove(ks); } catch (e) { } setFam(null); setFavs([]); setDone({}); setMe({ name: '' }); setPrefs({ maxMin: null, notif: true }); } },
   ]);
   const account = (
     <ScrollView style={{ backgroundColor: '#F4F4F1' }} contentContainerStyle={{ padding: 16, gap: 22, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
@@ -546,7 +596,7 @@ function Main() {
         </View>
       </View>
       <View style={s.stats}>
-        <Stat n={favs.length} l="Favoris" /><View style={s.statSep} /><Stat n={fam ? fam.kids.length : 0} l="Enfants" /><View style={s.statSep} /><Stat n={places.length} l="Lieux et sorties" />
+        <Stat n={favs.length} l="Favoris" /><View style={s.statSep} /><Stat n={Object.keys(done).length} l="Sorties faites" /><View style={s.statSep} /><Stat n={places.length} l="Lieux et sorties" />
       </View>
       <Group title="Ma famille">
         <SetRow label="Qui vient ?" value={fam ? famText(fam) : 'À compléter'} onPress={() => setSheet('fam')} />
@@ -586,7 +636,7 @@ function Main() {
 
   /* ----- Fiche ----- */
   const fiche = sel ? (() => {
-    const p = sel, a = photos[p.id], fav = favs.indexOf(p.id) >= 0, op = isOpen(p, date), st2 = L.hoursStatus(p), fit = L.ageFit(p), e = L.eff(p), ft = L.famTotal(p);
+    const p = sel, a = photos[p.id], fav = favs.indexOf(p.id) >= 0, op = isOpen(p, date), st2 = L.hoursStatus(p), fit = L.ageFit(p), e = L.eff(p), ft = L.famTotal(p), wk = p.evt ? null : weekHours(p, date), dn = done[p.id];
     return (
       <Modal visible animationType="slide" onRequestClose={() => setOpen(null)}>
         <SafeAreaView style={s.fill}>
@@ -605,15 +655,35 @@ function Main() {
             <Text style={[s.headline, { fontSize: 28 }]}>{p.name}</Text>
             <Text style={s.label}>{p.area + ' · ' + travel(L.km(p)) + ' depuis ' + L.here[0]}</Text>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}><CatTag p={p} /><Tag>{ageText(p)}</Tag><Tag>{p.io}</Tag>{p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}{p.offer ? <Tag bg={C.accent}>{'−' + p.offer + ' % On sort'}</Tag> : null}</View>
+            {!p.evt ? <View style={[s.status, { backgroundColor: !op || (st2 && st2.closed) ? '#FFE1D6' : p.osm && !p.oh ? C.soft : '#DFF5D3' }]}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: !op || (st2 && st2.closed) ? C.accentInk : p.osm && !p.oh ? '#9A9A95' : st2 && !st2.now ? '#C98A00' : C.green }} />
+              <Text style={{ fontWeight: '700', fontSize: 15, color: !op || (st2 && st2.closed) ? C.accentInk : p.osm && !p.oh ? C.muted : C.green, flex: 1 }}>{!op ? 'Fermé ' + (key(date) === key(TODAY) ? "aujourd'hui" : 'ce jour-là') : p.osm && !p.oh ? 'Horaires inconnus · à vérifier sur le site' : st2 ? st2.t : /\dh/.test(hoursFor(p, date)) ? 'Ouvert ' + (key(date) === key(TODAY) ? "aujourd'hui" : fmtDay(date)) + ' · ' + hoursFor(p, date) : 'Ouvert ' + (key(date) === key(TODAY) ? "aujourd'hui" : fmtDay(date)) + ' · horaires sur le site'}</Text>
+            </View> : null}
             {!fit.all ? <Text style={{ color: C.accentInk, fontWeight: '600' }}>{'Pas adapté à ' + fit.miss.map((x) => (x ? x + ' ans' : 'bébé')).join(' ni à ')}</Text> : null}
             {p.desc ? <Text style={{ fontSize: 15, lineHeight: 22 }}>{p.desc}</Text> : null}
             <View style={s.facts}>
-              <Fact k={p.evt ? 'Dates' : fmtDay(date)} v={p.evt ? evDates(p, date) : op ? (st2 ? st2.t : hoursFor(p, date)) : 'Fermé ce jour-là'} vc={op ? (st2 ? st2.c : C.green) : C.accentInk} />
+              {p.evt ? <Fact k="Dates" v={evDates(p, date)} vc={C.green} /> : null}
               {L.f1Today(p) ? <Fact k="1er dimanche du mois" v={'Gratuit pour tous' + (p.f1.resa ? ' · réservation ' + p.f1.resa : '')} vc={C.green} /> : null}
               {fam && ft != null ? <Fact k={'Pour vous (' + famText(fam) + ')'} v={ft === 0 ? 'Gratuit' : eur(ft)} /> : null}
               {!p.evt ? <Fact k="Adulte" v={e.ad == null ? 'Voir le site' : e.ad === 0 ? 'Gratuit' : eur(e.ad)} /> : null}
               {!p.evt ? <Fact k="Enfant" v={e.en == null ? 'Voir le site' : e.en === 0 ? 'Gratuit' : eur(e.en)} /> : null}
+              {p.wheel === 'yes' || p.wheel === 'limited' || p.wheel === 'no' ? <Fact k="Poussette / fauteuil" v={p.wheel === 'yes' ? 'Accessible' : p.wheel === 'limited' ? 'Accès partiel' : 'Non accessible'} vc={p.wheel === 'no' ? C.accentInk : C.ink} /> : null}
               <Fact k="À savoir" v={p.note.slice(0, 160)} last />
+            </View>
+            {wk ? <View style={{ gap: 6 }}>
+              <Text style={s.label}>Horaires des 7 prochains jours</Text>
+              <View style={s.facts}>{wk.map((r, i) => <Fact key={i} k={(i === 0 && key(r.d) === key(TODAY) ? "Aujourd'hui" : fmtDay(r.d)) + (r.hol ? ' · férié' : '')} v={r.h} vc={r.op ? C.ink : C.accentInk} last={i === 6} />)}</View>
+              <Text style={{ fontSize: 11, color: C.muted }}>{p.osm ? 'Horaires OpenStreetMap, à confirmer sur le site du lieu.' : 'Horaires indicatifs, à confirmer sur le site du lieu.'}</Text>
+            </View> : null}
+            <View style={s.doneBox}>
+              <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }} onPress={() => markDone(p.id, dn ? null : '')} accessibilityRole="checkbox" accessibilityState={{ checked: !!dn }}>
+                <View style={[s.check, dn && { backgroundColor: C.ink, borderColor: C.ink }]}>{dn ? <Text style={{ color: '#fff', fontWeight: '900' }}>✓</Text> : null}</View>
+                <View style={{ flex: 1 }}><Text style={s.setT}>On y est allés</Text><Text style={s.rowSub}>{dn ? 'Le ' + fmtDay(new Date(dn.t)) : 'Pour ne plus vous la proposer en premier'}</Text></View>
+              </Pressable>
+              {dn ? <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Chip label="On a adoré" on={dn.r === 'like'} onPress={() => markDone(p.id, dn.r === 'like' ? '' : 'like')} />
+                <Chip label="Bof" on={dn.r === 'meh'} onPress={() => markDone(p.id, dn.r === 'meh' ? '' : 'meh')} />
+              </View> : null}
             </View>
             <Nearby p={p} places={places} onOpen={(id) => setOpen(id)} />
             {p.url ? <Pressable onPress={() => Linking.openURL(p.url)}><Text style={{ textDecorationLine: 'underline', color: C.muted }}>Voir le programme sur Que faire à Paris</Text></Pressable> : null}
@@ -726,6 +796,20 @@ function Pic({ p, a, w, h, radius = 16 }) {
   const t = TINT[p.cat] || ['#F2F2F0', '#0B0B0B'];
   return <View style={{ width: w, height: h, borderRadius: radius, backgroundColor: t[0], alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: t[1], fontWeight: '900', fontSize: 22 }}>{p.cat}</Text></View>;
 }
+function Pick({ p, n, a, w, reasons, onOpen }) {
+  useEffect(() => { if (!a) lazyPhoto(p); }, [p.id]);
+  return (
+    <Pressable onPress={() => onOpen(p.id)} style={{ width: w }}>
+      <View>
+        <Pic p={p} a={a} w={w} h={190} radius={20} />
+        <View style={s.num}><Text style={{ fontWeight: '900', fontSize: 15 }}>{n}</Text></View>
+      </View>
+      <Text style={[s.rowTitle, { fontSize: 18, marginTop: 8 }]} numberOfLines={1}>{p.name}</Text>
+      <Text style={s.rowSub} numberOfLines={1}>{p.area}</Text>
+      <View style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>{reasons.map((r) => <Tag key={r[0]} bg={r[1]} fg={r[2]}>{r[0]}</Tag>)}</View>
+    </Pressable>
+  );
+}
 function Carousel({ title, items, photos, L, onOpen }) {
   if (items.length < 3) return null;
   return (
@@ -743,7 +827,7 @@ function Carousel({ title, items, photos, L, onOpen }) {
     </View>
   );
 }
-const Row = memo(function Row({ p, photos: a, width, onOpen, fav, onFav, sub, st2, fit, price, f1 }) {
+const Row = memo(function Row({ p, photos: a, width, onOpen, fav, onFav, sub, st2, fit, price, f1, done }) {
   const has = a && a.length;
   return (
     <Pressable onPress={() => onOpen(p.id)} style={[s.card, st2 && st2.closed && { opacity: 0.55 }]}>
@@ -766,6 +850,7 @@ const Row = memo(function Row({ p, photos: a, width, onOpen, fav, onFav, sub, st
             <CatTag p={p} />
             {f1 ? <Tag bg="#DFF5D3" fg={C.green}>Gratuit ce 1er dimanche</Tag> : null}
             {p.isNew ? <Tag bg={C.ink} fg={C.paper}>Nouveau</Tag> : null}
+            {done ? <Tag>Déjà fait</Tag> : null}
             {p.wheel === 'yes' ? <Tag>Accès fauteuil</Tag> : null}
             {!fit.all ? <Tag>{'Pas pour ' + fit.miss.map((x) => x || 'bébé').join(', ') + (fit.miss.some((x) => x > 0) ? ' ans' : '')}</Tag> : null}
           </View>
@@ -901,6 +986,10 @@ const s = StyleSheet.create({
   badge: { position: 'absolute', top: 8, left: 8, backgroundColor: C.paper, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3 },
   badgeT: { fontSize: 12, fontWeight: '800', color: C.ink },
   heart: { position: 'absolute', top: 10, right: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3 },
+  num: { position: 'absolute', top: 10, left: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 14 },
+  doneBox: { gap: 10, padding: 14, borderRadius: 14, backgroundColor: C.soft },
+  check: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: '#BDBDB8', alignItems: 'center', justifyContent: 'center', backgroundColor: C.paper },
   rainBox: { padding: 12, borderRadius: 14, backgroundColor: '#DCE8FF', gap: 2 },
   galBadge: { position: 'absolute', bottom: 12, backgroundColor: C.paper, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
 });
