@@ -169,6 +169,26 @@ nav.tabs button[aria-current="page"] .dot{background:var(--accent)}
 .grid2 small{display:block;font-size:12px;color:var(--muted)}
 .grid2 b{font-size:15px}
 .toast{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:40;white-space:nowrap}
+/* sélection du jour, statut, sorties faites, bienvenue */
+.selrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:0 max(16px,env(safe-area-inset-left,0px))}
+.selrow::-webkit-scrollbar{display:none}
+.selcard{flex:0 0 80%;scroll-snap-align:start;display:flex;flex-direction:column;gap:4px;text-align:left;cursor:pointer}
+.selpic{position:relative;height:180px;border-radius:20px;overflow:hidden;background:var(--soft)}
+.selpic img,.selpic svg{width:100%;height:100%;object-fit:cover;display:block}
+.selnum{position:absolute;top:10px;left:10px;width:30px;height:30px;border-radius:15px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800}
+.why{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;font-weight:700;font-size:15px}
+.status i{width:10px;height:10px;border-radius:5px;flex:0 0 auto}
+.donebox{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:var(--soft)}
+.donebtn{display:flex;align-items:center;gap:10px;text-align:left;width:100%}
+.check{width:26px;height:26px;border-radius:8px;border:2px solid #BDBDB8;background:var(--paper);display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 auto}
+.check.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.rain{padding:12px;border-radius:14px;background:#DCE8FF;color:#1F4FC2;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.rain b{font-size:15px}
+.ovfoot[style*="column"] .cta{flex:0 0 56px}
+.more{height:48px;border-radius:12px;background:var(--soft);font-weight:700;margin-top:12px;width:100%}
+.small{font-size:11px;color:var(--muted);line-height:1.4}
+select.field{appearance:auto}
 input[type=date]{height:48px;border-radius:12px;border:1px solid #DADAD6;padding:0 12px;font:inherit;font-size:16px;width:100%;box-sizing:border-box;background:var(--paper);color:var(--ink)}
 </style>
 
@@ -274,7 +294,7 @@ ILL.orsay=["#FFE07A",'<circle cx="32" cy="30" r="20" fill="#fff" stroke="#0B0B0B
 ILL.carnavalet=["#BEE7FF",'<path d="M14 10h4v40h-4z" fill="#0B0B0B"/><path d="M18 14h30v4H18z" fill="#0B0B0B"/><rect x="24" y="18" width="22" height="16" rx="3" fill="#FFC93D" stroke="#0B0B0B" stroke-width="2"/><path d="M29 26h12" stroke="#A8300C" stroke-width="3" stroke-linecap="round"/><rect x="0" y="50" width="64" height="14" fill="#7BC67E"/>'];
 ILL.mam=["#FFD1DC",'<rect x="8" y="12" width="48" height="34" fill="#fff" stroke="#0B0B0B" stroke-width="2"/><rect x="12" y="16" width="12" height="26" fill="#2F6BFF"/><rect x="26" y="16" width="12" height="26" fill="#FFC93D"/><rect x="40" y="16" width="12" height="26" fill="#FF5B2E"/><path d="M14 22l8 6-8 6M42 22l8 4-8 4" stroke="#fff" stroke-width="2" fill="none"/><rect x="6" y="54" width="52" height="4" fill="#0B0B0B"/>'];
 ILL.chasse=["#C8F2A6",'<path d="M20 12 L24 24 M18 18h7 M44 12 L40 24 M46 18h-7" stroke="#7A4A12" stroke-width="3" stroke-linecap="round"/><ellipse cx="32" cy="34" rx="11" ry="14" fill="#B5651D"/><ellipse cx="32" cy="42" rx="6" ry="5" fill="#E6C29A"/><circle cx="27" cy="31" r="1.8" fill="#0B0B0B"/><circle cx="37" cy="31" r="1.8" fill="#0B0B0B"/><path d="M22 24 C16 22 14 28 20 30 M42 24 C48 22 50 28 44 30" fill="#B5651D"/><rect x="18" y="52" width="28" height="6" rx="2" fill="#7A4A12"/>'];
-function catTag(p){var t=TINT[p.cat]||TINT.Château;return '<span class="tag" style="background:'+t[0]+';color:'+t[1]+'">'+esc(p.cat)+'</span>';}
+function catTag(p){var t=TINT[p.cat]||TINT2[p.cat]||TINT.Château;return '<span class="tag" style="background:'+t[0]+';color:'+t[1]+'">'+esc(p.cat)+'</span>';}
 
 /* ---------- Jours fériés ---------- */
 function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
@@ -292,6 +312,7 @@ function vacName(d){for(var i=0;i<VAC.length;i++){var v=VAC[i],a=new Date(v[0],v
 function bigClosed(d){var m=d.getMonth(),n=d.getDate();return (m===0&&n===1)||(m===4&&n===1)||(m===11&&n===25);}
 function isOpen(p,d){
   if(p.evt)return d>=p.ds0&&d<=p.de0;
+  if(p.oh){var r=osmHours(p.oh,d);if(r&&r.open===false)return false;}
   if(p.months&&p.months.indexOf(d.getMonth()+1)<0)return false;
   if(p.days.indexOf(d.getDay())<0)return false;
   if(p.hc&&bigClosed(d))return false;
@@ -308,7 +329,8 @@ function load(k,def){try{var v=localStorage.getItem("onsort."+k);return v?JSON.p
 function save(k,v){try{localStorage.setItem("onsort."+k,JSON.stringify(v));}catch(e){}}
 
 /* ---------- État ---------- */
-var S={me:load("me",{name:"",photo:""}),prefs:load("prefs",{maxMin:null,notif:true}),wipeArm:false,quick:{free:false,dry:false,near:false,deal:false},fam:load("fam",null),tab:"explore",where:load("where",10),date:TODAY,q:"",ages:[],budget:"all",io:"all",cat:"all",zoom:"paris",favs:load("favs",[]),tickets:load("tickets",[])};
+var TINT2={"Cinéma":["#E4E0FF","#4B2FB5"],Piscine:["#D6F0FF","#0B5C8A"]};
+var S={me:load("me",{name:"",photo:""}),prefs:load("prefs",{maxMin:null,notif:true}),wipeArm:false,quick:{free:false,dry:false,near:false,deal:false},fam:load("fam",null),tab:"explore",where:load("where",10),date:TODAY,q:"",ages:[],budget:"all",io:"all",cat:"all",zoom:"paris",favs:load("favs",[]),tickets:load("tickets",[]),done:load("done",{}),limit:30,wx:null};
 
 /* ---------- Utilitaires ---------- */
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -342,17 +364,18 @@ function ageFit(p){
   return {ok:miss.length<S.fam.kids.length,all:!miss.length,miss:miss};
 }
 function hoursStatus(p){
-  if(key(S.date)!==key(TODAY))return null;
-  var m=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours);if(!m)return null;
-  var now=new Date(),n=now.getHours()*60+now.getMinutes(),o=+m[1]*60+(+m[2]||0),c=+m[3]*60+(+m[4]||0),cl=m[3]+"h"+(m[4]||"");
-  if(n<o)return {t:"Ouvre à "+m[1]+"h"+(m[2]||""),c:"#6E4D00"};
-  if(n>=c)return {t:"Fermé pour aujourd'hui",c:"#A8300C",closed:true};
-  if(c-n<=60)return {t:"Ferme bientôt ("+cl+")",c:"#A8300C"};
-  return {t:"Ouvert jusqu'à "+cl,c:"#1E6B3A"};
+  if(key(S.date)!==key(TODAY)||p.evt)return null;
+  var rg=ranges(hoursFor(p,S.date));if(!rg.length)return null;
+  var now=new Date(),n=now.getHours()*60+now.getMinutes();
+  for(var i=0;i<rg.length;i++){var r=rg[i];
+    if(n<r.o)return {t:"Ouvre à "+hm(r.o),c:"#6E4D00"};
+    if(n<r.c)return r.c-n<=60?{t:"Ferme bientôt ("+hm(r.c)+")",c:"#A8300C"}:{t:"Ouvert maintenant · jusqu’à "+hm(r.c),c:"#1E6B3A",now:true};
+  }
+  return {t:"Fermé pour aujourd'hui",c:"#A8300C",closed:true};
 }
 function tmin(p){var k=km(p);return k<1.6?k*13:k<25?10+k*3.2:k*1.1;}
 function napOk(p){
-  var m=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(p.hours);if(!m)return true;
+  var m=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/.exec(hoursFor(p,S.date));if(!m)return true;
   var o=+m[1]*60+(+m[2]||0),c=+m[3]*60+(+m[4]||0);
   return (13*60-o)>=120||(c-(15*60+30))>=120;
 }
@@ -366,11 +389,203 @@ function matches(p){
   if(S.quick.dry&&p.io==="Plein air")return false;
   if(S.quick.near&&km(p)>3)return false;
   if(S.quick.deal&&!p.offer)return false;
+  if(S.prefs.pmr&&p.wheel==="no")return false;
+  if(S.prefs.zone==="paris"&&dist(48.853,2.349,p.lat,p.lng)>6.5)return false;
+  if(S.prefs.zone==="pc"&&dist(48.853,2.349,p.lat,p.lng)>14)return false;
   return true;
 }
-function results(){return P.filter(matches).sort(function(a,b){var ca=(hoursStatus(a)||{}).closed?1:0,cb=(hoursStatus(b)||{}).closed?1:0;return ca-cb||(ageFit(a).all?0:1)-(ageFit(b).all?0:1)||km(a)-km(b);});}
+var RES={k:"",v:[]};
+function dirty(){RES.k="";}
+function results(){
+  var h=here(),k=[S.q,key(S.date),JSON.stringify(S.quick),JSON.stringify(S.fam),JSON.stringify(S.prefs),h[1],h[2],P.length,rainy(),Object.keys(PH).length>>4,new Date().getHours()].join("|");
+  if(RES.k===k)return RES.v;
+  var wet=rainy();
+  var v=P.filter(matches).map(function(p){return {p:p,c:(hoursStatus(p)||{}).closed?1:0,w:wet&&p.io==="Plein air"?1:0,t:thin(p)?1:0,f:ageFit(p).all?0:1,k:km(p)};})
+    .sort(function(a,b){return a.c-b.c||a.w-b.w||a.t-b.t||a.f-b.f||a.k-b.k;}).map(function(x){return x.p;});
+  RES={k:k,v:v};return v;
+}
+function picks(){
+  var wet=rainy();
+  return results().slice(0,400).filter(function(p){return !(hoursStatus(p)||{}).closed&&!thin(p);}).map(function(p){
+    var d=S.done[p.id];
+    return {p:p,sc:-tmin(p)+(ageFit(p).all?15:0)+(isFree(p)?8:0)+(p.offer?6:0)+(f1Today(p)?10:0)+(p.isNew?4:0)+(wet?(p.io==="Plein air"?-14:10):0)+(p.osm?(p.oh?0:-6)+(PH[p.id]?0:-8):6)+(d?(d.r==="meh"?-40:-18):0)};
+  }).sort(function(a,b){return b.sc-a.sc;}).map(function(x){return x.p;});
+}
+function reasons(p){
+  var r=[],hs=hoursStatus(p),fit=ageFit(p),t=famTotal(p),d=S.done[p.id];
+  if(f1Today(p))r.push(["Gratuit ce 1er dimanche","#DFF5D3","#1E6B3A"]);
+  else if(isFree(p))r.push([S.fam?"Gratuit pour vous":"Gratuit","#DFF5D3","#1E6B3A"]);
+  else if(t!=null)r.push(["≈ "+eur(t)+" pour vous","#F2F2F0","#0B0B0B"]);
+  r.push([travel(km(p)),"#F2F2F0","#0B0B0B"]);
+  if(rainy()&&p.io!=="Plein air")r.push(["À l’abri de la pluie","#DCE8FF","#1F4FC2"]);
+  if(S.fam&&S.fam.kids.length&&fit.all)r.push([S.fam.kids.length>1?"Pour tous tes enfants":"Pour son âge","#FFF0B8","#6E4D00"]);
+  if(hs&&!hs.closed)r.push([hs.t.replace("Ouvert maintenant · j","J"),"#F2F2F0",hs.c]);
+  if(p.offer)r.push(["−"+p.offer+" % avec On sort","#FF5B2E","#0B0B0B"]);
+  if(d&&d.r==="like")r.push(["Vous avez adoré","#FFE1EC","#A3164F"]);
+  return r.slice(0,4);
+}
+function whyTags(p){return reasons(p).map(function(r){return '<span class="tag" style="background:'+r[1]+';color:'+r[2]+'">'+esc(r[0])+'</span>';}).join("");}
 function toast(t){var el=document.createElement("div");el.className="toast";el.textContent=t;el.setAttribute("role","status");document.getElementById("app").appendChild(el);setTimeout(function(){el.remove();},1800);}
-function ill(id,extra){var d=ILL[id]||["#F2F2F0",""];return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
+function bgOf(id){var d=ILL[id];if(d)return d[0];var p=byId(id),tt=p&&(TINT[p.cat]||TINT2[p.cat]);return tt?tt[0]:"#F2F2F0";}
+function ill(id,extra){var d=ILL[id];if(!d){var p=byId(id),tt=p&&(TINT[p.cat]||TINT2[p.cat])||["#F2F2F0","#5E5E5A"];d=[tt[0],p?'<text x="32" y="36" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-size="'+(p.cat.length>7?9:11)+'" font-weight="800" fill="'+tt[1]+'">'+esc(p.cat)+'</text>':''];}return '<svg viewBox="0 0 64 64" '+(extra||"")+' aria-hidden="true"><rect width="64" height="64" fill="'+d[0]+'"/>'+d[1]+'</svg>';}
+/* ---------- Horaires OpenStreetMap ---------- */
+var OD=["Su","Mo","Tu","We","Th","Fr","Sa"];
+function osmHours(oh,d){
+  if(!oh)return null;if(/24\/7/.test(oh))return {open:true,txt:"0h – 24h"};
+  var wd=OD[d.getDay()],res=null,allOk=true,nOk=0;
+  oh.split(";").forEach(function(rule){
+    var r=rule.trim();if(!r)return;var m=/^((?:[A-Z][a-z](?:-[A-Z][a-z])?,?)+)\s+(off|closed|\d\d:\d\d-\d\d:\d\d(?:,\s?\d\d:\d\d-\d\d:\d\d)*)$/.exec(r);
+    if(!m){if(!/^(PH|SH)\b/.test(r))allOk=false;return;}
+    nOk++;var days={};
+    m[1].split(",").filter(Boolean).forEach(function(part){var ab=part.split("-"),ia=OD.indexOf(ab[0]),ib=ab[1]?OD.indexOf(ab[1]):ia;if(ia<0||ib<0)return;var i=ia;for(var k=0;k<7;k++){days[OD[i]]=1;if(i===ib)break;i=(i+1)%7;}});
+    if(days[wd])res=(m[2]==="off"||m[2]==="closed")?{open:false,txt:""}:{open:true,txt:m[2].split(",").map(function(x){return x.trim().replace(/(\d\d):00/g,function(y,h){return +h+"h";}).replace(/(\d\d):(\d\d)/g,function(y,h,mm){return +h+"h"+mm;}).replace("-"," – ");}).join(", ")};
+  });
+  if(!res&&allOk&&nOk)return {open:false,txt:""};
+  return res;
+}
+function hoursFor(p,d){if(p.oh){var r=osmHours(p.oh,d);return r&&r.open?r.txt:"Horaires : voir le site";}return p.hours;}
+function ranges(txt){var out=[],re=/(\d{1,2})h(\d{2})?\s*–\s*(\d{1,2})h(\d{2})?/g,m;while((m=re.exec(txt||"")))out.push({o:+m[1]*60+(+m[2]||0),c:+m[3]*60+(+m[4]||0)});return out;}
+function hm(x){var h=Math.floor(x/60),m=x%60;return h+"h"+(m?String(m).padStart(2,"0"):"");}
+function weekHours(p,from){
+  var rows=[],known=0;
+  for(var i=0;i<7;i++){var d=addDays(from,i),op=isOpen(p,d),h=op?hoursFor(p,d):"";if(!op||/\dh/.test(h))known++;rows.push({d:d,op:op,h:op?(/\dh/.test(h)?h:"Ouvert"):"Fermé",hol:holName(d)});}
+  return known>=4?rows:null;
+}
+function unknownHours(p){return p.osm&&!p.oh;}
+function thin(p){return p.osm&&!p.oh&&!PH[p.id];}
+function day0(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function arrond(z){var m=/^75(0\d\d)$/.exec(String(z||""));if(m){var n=+m[1].slice(1);return n===1?"1er":n+"e";}return String(z||"");}
+
+/* ---------- Agenda Que faire à Paris (Ville de Paris) ---------- */
+function evFromRec(r){
+  var ll=r.lat_lon||r.geo_point_2d;if(!ll||!r.title)return null;
+  var lat=+ll.lat,lng=+ll.lon;if(!(lat>48.6&&lat<49.3&&lng>1.7&&lng<3.0))return null;
+  var ds=r.date_start?new Date(r.date_start):null,de=r.date_end?new Date(r.date_end):ds;if(!ds||isNaN(ds))return null;
+  var aud=stripHtml((r.audience||"")+" "+(r.childrens||"")),am=/(\d{1,2})\s*ans/.exec(aud);
+  var pt=String(r.price_type||"").toLowerCase(),free=pt.indexOf("gratuit")===0&&pt.indexOf("condition")<0;
+  var id="qf-"+String(r.id||r.url||r.title).replace(/[^a-zA-Z0-9]/g,"").slice(-24);
+  if(r.cover_url)PH[id]=[{t:r.cover_url,a:stripHtml(r.cover_credit)||"Que faire à Paris",l:"Ville de Paris",u:r.url||"https://quefaire.paris.fr"}];
+  return {id:id,name:stripHtml(r.title),area:[stripHtml(r.address_name),arrond(r.address_zipcode)].filter(Boolean).join(" · ")||"Paris",lat:lat,lng:lng,cat:"Agenda",io:r.event_indoor==1?"Intérieur":"Mixte",a:[am?+am[1]:0,99],ad:free?0:null,en:free?0:null,note:stripHtml(r.price_detail)||(free?"Gratuit":"Tarifs : voir le site"),days:ALL,hours:"Horaires : voir le site",offer:0,evt:true,ds0:day0(ds),de0:day0(de),url:r.url||"",desc:stripHtml(r.lead_text||r.description).slice(0,260)};
+}
+function loadEvents(){
+  if(!window.fetch)return;
+  var base="https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/que-faire-a-paris-/records?limit=100&where="+encodeURIComponent('"enfants" and date_end >= now()');
+  var all=[];
+  function page(off){return fetch(base+"&offset="+off).then(function(r){return r.ok?r.json():{results:[]};}).then(function(j){var rs=j.results||[];all=all.concat(rs);if(rs.length===100&&off<300)return page(off+100);});}
+  page(0).then(function(){var have={};P.forEach(function(p){have[p.id]=1;});all.forEach(function(r){var e=evFromRec(r);if(e&&!have[e.id]){have[e.id]=1;P.push(e);}});dirty();phRender();},function(){});
+}
+
+/* ---------- Lieux Île-de-France : OpenStreetMap (© contributeurs OpenStreetMap, ODbL) ---------- */
+var OVQ='[out:json][timeout:120][bbox:48.12,1.44,49.25,3.56];(nwr["tourism"~"^(museum|zoo|aquarium|theme_park)$"]["name"];nwr["tourism"="attraction"]["attraction"="animal"]["name"];nwr["leisure"~"^(water_park|ice_rink|bowling_alley|miniature_golf|trampoline_park)$"]["name"];nwr["leisure"="sports_centre"]["sport"~"swimming|trampoline|climbing"]["name"];nwr["leisure"="park"]["name"]["wikidata"];nwr["amenity"~"^(cinema|planetarium)$"]["name"];);out center tags qt;';
+var OVS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+/* Lieux sans intérêt pour une sortie en famille, écartés d'office */
+var OSM_BAD=/\b(erotis\w*|sexe|vins?|caves?|police|franc-?maconn\w*|maconn\w*|barreau|tabac|pharmac\w*|medecine|chirurg\w*|anatom\w*|memorial|deportation|resistance|shoah|cimetiere|crypte|eglise|chapelle|cathedrale|basilique|synagogue|mosquee|loge|prefecture|mairie|ministere|banque|monnaie|poste|parfums?|mode|bijoux?|cristal|porcelaine|eventails?|serrurerie|vie romantique|magie noire|guerre)\b/;
+function osmCat(t){
+  if(t.tourism==="museum")return ["Musée","Intérieur"];if(t.tourism==="aquarium")return ["Animaux","Intérieur"];
+  if(t.tourism==="zoo"||t.attraction==="animal")return ["Animaux","Plein air"];if(t.tourism==="theme_park"||t.leisure==="water_park")return ["Loisirs","Plein air"];
+  if(t.leisure==="park")return ["Parc","Plein air"];if(t.amenity==="cinema")return ["Cinéma","Intérieur"];if(t.amenity==="planetarium")return ["Sciences","Intérieur"];
+  if(/swimming/.test(t.sport||""))return ["Piscine","Intérieur"];return ["Loisirs","Intérieur"];
+}
+function commonsPhoto(v){if(!v)return null;var m=/File:(.+)$/i.exec(decodeURIComponent(String(v)));if(!m)return null;var f=m[1].replace(/ /g,"_");return {t:"https://commons.wikimedia.org/wiki/Special:FilePath/"+encodeURIComponent(f)+"?width=640",a:"voir la page de la photo",l:"Wikimedia Commons",u:"https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(f)};}
+function osmKeep(t){
+  if(!t.name||t.access==="private"||t.disused||t.abandoned)return false;
+  if(OSM_BAD.test(norm(t.name)))return false;
+  if(t.tourism==="museum"&&!t.wikidata&&!t.website&&!t["contact:website"])return false;
+  return true;
+}
+function osmToPlace(el,ph){
+  var t=el.tags||{},lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);
+  if(!lat||!osmKeep(t))return null;
+  var c=osmCat(t),id="osm-"+el.type[0]+el.id,free=t.fee==="no";
+  var p0=commonsPhoto(t.wikimedia_commons)||(t.image&&/commons\.wikimedia\.org\/wiki\/File:/.test(t.image)?commonsPhoto(t.image.split("/wiki/")[1]):null);if(p0)ph[id]=[p0];
+  var pc=t["addr:postcode"]||"",city=t["addr:city"]||"";
+  return {id:id,name:t.name,area:[/^75/.test(pc)?arrond(pc):"",city].filter(Boolean).join(" · ")||"Île-de-France",lat:+lat,lng:+lng,cat:c[0],io:c[1],a:[0,99],ad:free?0:null,en:free?0:null,note:free?"Entrée libre":"Tarifs : voir le site du lieu",days:ALL,hours:"Horaires : voir le site",oh:t.opening_hours||"",offer:0,osm:true,web:t.website||t["contact:website"]||"",wheel:t.wheelchair||"",desc:t.description||""};
+}
+function osmDedupe(list){
+  var out=[];list.sort(function(a,b){return (b.oh?2:0)+(b.web?1:0)-((a.oh?2:0)+(a.web?1:0));});
+  list.forEach(function(o){
+    var dup=P.some(function(c){var d=dist(c.lat,c.lng,o.lat,o.lng);return d<0.06||(d<0.25&&norm(c.name).slice(0,6)===norm(o.name).slice(0,6));})||out.some(function(c){return dist(c.lat,c.lng,o.lat,o.lng)<0.3&&norm(c.name).slice(0,10)===norm(o.name).slice(0,10);});
+    if(!dup)out.push(o);
+  });
+  return out;
+}
+function addOSM(c){var have={};P.forEach(function(p){have[p.id]=1;});c.places.forEach(function(x){if(!have[x.id]){have[x.id]=1;P.push(x);}});Object.keys(c.photos||{}).forEach(function(k){if(!PH[k])PH[k]=c.photos[k];});dirty();phRender();}
+function loadOSM(){
+  if(!window.fetch)return;
+  var c=load("osm.v2",null);
+  if(c&&c.places&&Date.now()-c.t<7*864e5){addOSM(c);return;}
+  function tryAt(i){
+    if(i>=OVS.length){if(c&&c.places)addOSM(c);return;}
+    fetch(OVS[i],{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(OVQ)}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
+      var ph={},list=osmDedupe((j.elements||[]).map(function(el){return osmToPlace(el,ph);}).filter(Boolean));
+      if(!list.length)throw 0;var n={t:Date.now(),places:list,photos:ph};save("osm.v2",n);addOSM(n);
+    }).catch(function(){tryAt(i+1);});
+  }
+  tryAt(0);
+}
+
+/* ---------- Météo : Open-Meteo (CC BY 4.0, offre gratuite non commerciale) ---------- */
+function loadWeather(){
+  if(!window.fetch)return;var h=here();
+  fetch("https://api.open-meteo.com/v1/forecast?latitude="+h[1].toFixed(3)+"&longitude="+h[2].toFixed(3)+"&hourly=precipitation_probability,temperature_2m&timezone=Europe%2FParis&forecast_days=7").then(function(r){return r.json();}).then(function(j){if(j&&j.hourly&&j.hourly.time){S.wx=j.hourly;dirty();if(!document.querySelector(".overlay"))render();}},function(){});
+}
+function dayWeather(d){
+  var h=S.wx;if(!h)return null;var pre=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),rain=-1,ts=0,n=0;
+  h.time.forEach(function(t,i){if(t.indexOf(pre)===0){var hr=+t.slice(11,13);if(hr>=10&&hr<=18){rain=Math.max(rain,h.precipitation_probability[i]||0);ts+=h.temperature_2m[i];n++;}}});
+  return n?{rain:rain,temp:Math.round(ts/n)}:null;
+}
+function rainy(){var w=dayWeather(S.date);return !!(w&&w.rain>=60);}
+
+/* ---------- Toilettes publiques : Ville de Paris (sanisettes, ODbL) ---------- */
+function mTxt(k){return k<1?Math.round(k*100)*10+" m":k.toFixed(1).replace(".",",")+" km";}
+function fillNearby(p){
+  var box=document.getElementById("nearby");if(!box)return;
+  var park=P.filter(function(x){return x.cat==="Parc"&&x.id!==p.id;}).map(function(x){return {x:x,d:dist(p.lat,p.lng,x.lat,x.lng)};}).sort(function(a,b){return a.d-b.d;})[0];
+  var showPark=park&&park.d<1.5&&p.cat!=="Parc";
+  function draw(wc){
+    if(!document.getElementById("nearby"))return;
+    if(!wc&&!showPark){box.innerHTML="";return;}
+    box.innerHTML='<span class="label">À côté</span><div class="facts">'+(wc?'<a class="fact" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&travelmode=walking&destination='+wc.lat+','+wc.lng+'"><span>Toilettes publiques · '+mTxt(wc.d)+'</span><span>'+esc([wc.h,wc.pmr?"accès PMR":""].filter(Boolean).join(" · ")||"Voir sur la carte")+'</span></a>':'')+(showPark?'<button class="fact" style="width:100%;text-align:left" data-open="'+park.x.id+'"><span>Pique-nique · '+mTxt(park.d)+'</span><span>'+esc(park.x.name)+'</span></button>':'')+'</div>'+(wc?'<span class="small">Toilettes : Ville de Paris (sanisettes en service)</span>':'');
+  }
+  if(!(p.lat>48.81&&p.lat<48.91&&p.lng>2.22&&p.lng<2.47)){draw(null);return;}
+  box.innerHTML='<span class="small">Recherche des toilettes à proximité…</span>';
+  var w=encodeURIComponent("within_distance(geo_point_2d, geom'POINT("+p.lng+" "+p.lat+")', 700m)");
+  fetch("https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/sanisettesparis/records?limit=20&where="+w).then(function(r){return r.ok?r.json():{results:[]};}).then(function(j){
+    var l=(j.results||[]).map(function(x){var g=x.geo_point_2d||{};return {lat:+g.lat,lng:+g.lon,h:x.horaire||"",pmr:String(x.acces_pmr||"").toLowerCase()==="oui",ok:!/hors/i.test(x.statut||"")};}).filter(function(x){return x.lat&&x.ok;}).map(function(x){x.d=dist(p.lat,p.lng,x.lat,x.lng);return x;}).sort(function(a,b){return a.d-b.d;});
+    draw(l[0]||null);
+  },function(){draw(null);});
+}
+
+/* ---------- Photos à la demande pour les lieux affichés ---------- */
+var LAZY={busy:0,q:[],tried:{}};
+function lazyPhoto(p){if(LAZY.tried[p.id]||PH[p.id])return;LAZY.tried[p.id]=1;LAZY.q.push(p);pumpLazy();}
+function pumpLazy(){
+  while(LAZY.busy<3&&LAZY.q.length){(function(p){LAZY.busy++;
+    var city=p.area.split(" · ").pop(),words=norm(p.name).split(/[^a-z0-9]+/).filter(function(w){return w.length>3&&!/^(parc|musee|piscine|cinema|jardin|centre|salle|espace|square|municipal|municipale)$/.test(w);});
+    wmSearch(p.name+(city&&city!=="Île-de-France"&&!/^\d/.test(city)?" "+city:"")).then(function(pages){
+      pages=pages.filter(function(pg){return !words.length||words.some(function(w){return norm(pg.title).indexOf(w)>=0;});});
+      var out=[],seen={};wmPick(pages,out,seen,true);if(out.length<2)wmPick(pages,out,seen,false);
+      if(out.length){PH[p.id]=out;savePH();phRender();}
+    },function(){}).then(function(){LAZY.busy--;pumpLazy();});
+  })(LAZY.q.shift());}
+}
+var phSaveT=0;function savePH(){clearTimeout(phSaveT);phSaveT=setTimeout(function(){var o={};Object.keys(PH).forEach(function(k){if(k.indexOf("qf-")!==0)o[k]=PH[k];});save("ph.v3",o);},800);}
+var IO=null;
+function observeRows(){
+  if(!window.IntersectionObserver)return;
+  if(!IO)IO=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){var id=en.target.getAttribute("data-open"),p=byId(id);if(p&&p.osm)lazyPhoto(p);IO.unobserve(en.target);}});},{rootMargin:"200px"});
+  document.querySelectorAll("#scroll [data-open]").forEach(function(el){var p=byId(el.getAttribute("data-open"));if(p&&p.osm&&!PH[p.id])IO.observe(el);});
+}
+var BYID={};function byId(id){if(!BYID[id]||BYID.n!==P.length){BYID={n:P.length};P.forEach(function(p){BYID[p.id]=p;});}return BYID[id];}
+
+/* ---------- Mesure d'audience anonyme (aucune donnée personnelle) ---------- */
+var STAT_URL="";
+function uid(){var u=load("uid","");if(!u){u=Math.random().toString(36).slice(2,12);save("uid",u);}return u;}
+function track(ev,pid){
+  if(!STAT_URL||S.prefs.nostat)return;
+  try{new Image().src=STAT_URL+"?e="+encodeURIComponent(ev)+"&u="+uid()+"&p="+encodeURIComponent(pid||"")+"&r="+Date.now();}catch(e){}
+}
+
 /* ---------- Photos Wikimedia Commons (chargées par le navigateur, crédit obligatoire) ---------- */
 var PQ={orsay:"Musée d'Orsay nef",carnavalet:"Musée Carnavalet",mam:"Musée d'Art Moderne de Paris",chasse:"Musée de la Chasse et de la Nature",acclim:"Jardin d'Acclimatation Paris",menagerie:"Ménagerie du Jardin des Plantes",zoo:"Parc zoologique de Paris",citeenfants:"Cité des sciences et de l'industrie",evolution:"Grande Galerie de l'Évolution",petitpalais:"Petit Palais Paris",branly:"Musée du quai Branly",armee:"Musée de l'Armée Invalides",artsmetiers:"Musée des Arts et Métiers",grandpalais:"Grand Palais Paris nef",philharmonie:"Philharmonie de Paris",museeherbe:"Musée en Herbe Paris",aquarium:"Aquarium de Paris Trocadéro",buttes:"Parc des Buttes-Chaumont",bercy:"Parc de Bercy",luxembourg:"Jardin du Luxembourg bassin",villette:"Parc de la Villette",tuileries:"Jardin des Tuileries",monceau:"Parc Monceau",montsouris:"Parc Montsouris",citroen:"Parc André-Citroën",belleville:"Parc de Belleville",floral:"Parc floral de Paris",ferme:"Ferme de Paris Vincennes",daumesnil:"Lac Daumesnil",versailles:"Château de Versailles",sceaux:"Domaine de Sceaux",saintcloud:"Domaine national de Saint-Cloud",cergy:"Île de loisirs de Cergy-Pontoise",miniature:"France Miniature Élancourt"};
 var PH=load("ph.v3",{});
@@ -411,17 +626,17 @@ function tile(p){var ph=ph1(p.id);return '<span class="tile">'+(ph?'<img src="'+
 function heroHtml(p){
   var a=PH[p.id];
   if(a&&a.length)return '<div class="gal"><div class="galtrack" id="galtrack">'+a.map(function(ph,i){return '<img src="'+esc(ph.t)+'" alt="Photo '+(i+1)+' : '+esc(p.name)+'"'+(i?' loading="lazy"':'')+' onerror="this.remove()">';}).join("")+'</div><span class="galcount" id="galcount">1 / '+a.length+'</span><span class="galcat">'+esc(p.cat)+'</span></div><div class="credit" id="galcredit">'+creditHtml(a[0])+'</div>';
-  return '<div class="hero" style="background:'+(ILL[p.id]||["#F2F2F0"])[0]+'">'+ill(p.id).replace(/<rect x="0" y="(\d+)" width="64"/g,'<rect x="-200" y="$1" width="464"')+'<span>'+esc(p.cat)+'</span></div>';
+  return '<div class="hero" style="background:'+bgOf(p.id)+'">'+ill(p.id).replace(/<rect x="0" y="(\d+)" width="64"/g,'<rect x="-200" y="$1" width="464"')+'<span>'+esc(p.cat)+'</span></div>';
 }
 function creditHtml(ph){return 'Photo : <a href="'+esc(ph.u)+'" target="_blank" rel="noopener">'+esc(ph.a)+'</a> · '+esc(ph.l)+' · Wikimedia Commons';}
 function bindGallery(p){
   var tr=document.getElementById("galtrack"),a=PH[p.id];if(!tr||!a)return;
   tr.addEventListener("scroll",function(){var i=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));i=Math.max(0,Math.min(a.length-1,i));document.getElementById("galcount").textContent=(i+1)+" / "+a.length;document.getElementById("galcredit").innerHTML=creditHtml(a[i]);},{passive:true});
 }
-function requestGPS(show){
+function requestGPS(show,keep){
   try{
     if(!navigator.geolocation){if(show)toast("Position indisponible ici");return;}
-    navigator.geolocation.getCurrentPosition(function(pos){S.geo=["Ma position",pos.coords.latitude,pos.coords.longitude];MV={z:1,c:null};closeOv();render();},function(){if(show)toast("Position refusée ou indisponible");},{timeout:8000,maximumAge:600000});
+    navigator.geolocation.getCurrentPosition(function(pos){S.geo=["Ma position",pos.coords.latitude,pos.coords.longitude];MV={z:1,c:null};dirty();if(keep)openOnb();else closeOv();render();loadWeather();},function(){if(show)toast("Position refusée ou indisponible");},{timeout:8000,maximumAge:600000});
   }catch(e){if(show)toast("Position indisponible ici");}
 }
 var X='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -463,7 +678,7 @@ function mlUpdate(box,list){
   var h=here(),hk=h[1]+","+h[2];
   if(hk!==ML.lastHere){ML.lastHere=hk;ML.map.jumpTo({center:[h[2],h[1]],zoom:12.6});}
   ML.markers.forEach(function(m){m.remove();});ML.markers=[];
-  list.slice(0,70).forEach(function(p){
+  list.filter(function(p){return !thin(p);}).slice(0,70).forEach(function(p){
     var el=document.createElement("div");el.className="mlpin";el.setAttribute("data-open",p.id);
     var ph=ph1(p.id),txt=p.offer?("−"+p.offer+" %"):shortPrice(p);
     el.innerHTML='<span class="av">'+(ph?'<img src="'+esc(ph.t)+'" alt="">':ill(p.id))+'</span><span class="pr'+(p.offer?" deal":"")+'">'+esc(txt)+'</span>';
@@ -567,25 +782,37 @@ function renderExplore(){
   html+='<div class="sum"><button class="spill'+(hol?" hol":"")+'" data-act="date">'+CAL+esc(whenText())+'</button><button class="spill'+(S.fam?"":" nudge")+'" data-act="fam">'+FAM+esc(famText())+'</button></div>';
   html+='<div class="chips" role="group" aria-label="Raccourcis">'+[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]].map(function(b){return '<button class="chip" data-quick="'+b[0]+'" aria-pressed="'+S.quick[b[0]]+'">'+b[1]+'</button>';}).join("")+'</div>';
   html+='<div style="display:flex;flex-direction:column;gap:2px"><h1 class="headline">'+(S.me.name?esc(S.me.name)+', ':'')+list.length+' sortie'+(list.length>1?"s":"")+' pour vous</h1><span class="label">'+esc(fmtDay(S.date))+(hol?" · "+esc(hol)+", jour férié":"")+(vacName(S.date)?" · "+esc(vacName(S.date)):"")+(firstSun(S.date)?" · 1er dimanche : musées gratuits":"")+' · depuis '+esc(h[0])+'</span></div>';
+  var W=dayWeather(S.date);
+  if(W)html+='<span class="label" style="margin-top:-10px;color:'+(W.rain>=60?"#1F4FC2":"#5E5E5A")+'">'+(W.rain>=60?"Pluie probable ("+W.rain+" %)":W.rain>=30?"Averses possibles ("+W.rain+" %)":"Temps sec")+' · '+W.temp+'°</span>';
+  if(W&&W.rain>=60)html+='<div class="rain"><b>Plan B pluie activé</b>Les sorties à l’abri passent en premier.</div>';
+  if(!S.q){
+    var top=picks().slice(0,6),wk=S.date.getDay()===0||S.date.getDay()===6||!!hol,ns=nextSunday();
+    if(top.length){
+      var ttl=key(S.date)===key(TODAY)?(hol?hol+" : notre sélection":"Notre sélection pour aujourd'hui"):"Notre sélection pour "+(S.date.getDay()===0?"dimanche "+S.date.getDate():S.date.getDay()===6?"samedi "+S.date.getDate():fmtDay(S.date));
+      html+='<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><h2 class="headline" style="font-size:22px">'+esc(ttl)+'</h2>'+(!wk&&key(S.date)===key(TODAY)?'<button data-date="'+ns.getTime()+'" style="font-weight:700;color:#B8360F;white-space:nowrap">Dimanche '+ns.getDate()+' ›</button>':'')+'</div><div class="selrow">'+
+        top.map(function(p,i){var ph=ph1(p.id);return '<div class="selcard" data-open="'+p.id+'" data-pick="1" role="button" tabindex="0"><div class="selpic" style="background:'+bgOf(p.id)+'">'+(ph?'<img src="'+esc(ph.t)+'" alt="" loading="lazy" onerror="this.remove()">':ill(p.id))+'<span class="selnum">'+(i+1)+'</span></div><span class="rowtitle" style="font-size:17px;margin-top:6px">'+esc(p.name)+'</span><span class="rowsub">'+esc(p.area)+'</span><span class="why">'+whyTags(p)+'</span></div>';}).join("")+
+        '</div><span class="small">Choisies selon '+[S.fam&&S.fam.kids.length?"l’âge des enfants":null,W?"la météo":null,"les horaires","la distance"].filter(Boolean).join(", ").replace(/, ([^,]*)$/," et $1")+'.</span></div>';
+    }
+  }
   if(!S.fam)html+='<button class="nudgecard" data-act="fam"><b>Ajoute l’âge de tes enfants</b><span>On ne te montre que ce qui leur convient, avec le prix pour toute la famille.</span></button>';
   if(!list.length){
     var on=[[["free","Gratuit"],["dry","À l\u2019abri"],["near","À 20 min"],["deal","Offres"]]].filter(function(b){return S.quick[b[0]];});
     html+='<div class="empty">Rien ne correspond ce jour-là.<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">'+on.map(function(b){return '<button class="chip" data-quick="'+b[0]+'">Retirer « '+b[1]+' »</button>';}).join("")+(S.q?'<button class="chip" data-act="clearq">Effacer la recherche</button>':'')+'<button class="chip" data-act="date">Changer de jour</button></div></div>';
-  } else {html+='<div>';list.forEach(function(p){html+=rowHtml(p);});html+='</div>';}
-  html+='<p class="banner">Version de test. Photos : Wikimedia Commons (auteur et licence dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu. Les offres −10 % et les réservations sont des démonstrations, aucun paiement n\'est fait.</p>';
+  } else {html+='<div>';list.slice(0,S.limit).forEach(function(p){html+=rowHtml(p);});html+='</div>';if(list.length>S.limit)html+='<button class="more" data-act="more">Voir plus ('+(list.length-S.limit)+' autres)</button>';}
+  html+='<p class="banner">Version de test. Photos : Wikimedia Commons (auteur et licence dans chaque fiche). Tarifs et horaires indicatifs, à vérifier sur le site du lieu. Les offres −10 % et les réservations sont des démonstrations, aucun paiement n\'est fait. Lieux d\'Île-de-France : © contributeurs OpenStreetMap.</p>';
   return html+'</div></div>';
 }
 function rowCompact(p){
   var k=km(p),st=hoursStatus(p),fit=ageFit(p);
   var sub=travel(k)+(p.evt?' · '+esc(evDates(p)):st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
-  return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
+  return '<button class="row'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(S.done[p.id]?'<span class="tag">Déjà fait</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button>';
 }
 function rowHtml(p){
   var a=PH[p.id];if(!a||!a.length)return rowCompact(p);
   var k=km(p),st=hoursStatus(p),fit=ageFit(p);
   var sub=travel(k)+(p.evt?' · '+esc(evDates(p)):st?' · <span style="color:'+st.c+';font-weight:600">'+esc(st.t)+'</span>':' · '+esc(ageText(p)));
   return '<div class="card'+(st&&st.closed?" dimrow":"")+'" data-open="'+p.id+'"><div class="strip">'+a.map(function(ph,i){return '<img src="'+esc(ph.t)+'" alt=""'+(i?' loading="lazy"':'')+' onerror="this.remove()">';}).join("")+'</div>'+
-    '<button class="cardinfo" data-open="'+p.id+'"><span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button></div>';
+    '<button class="cardinfo" data-open="'+p.id+'"><span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">'+sub+'</span>'+(p.offer?'<span class="rowdeal">−'+p.offer+' % avec On sort</span>':'')+'<span style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap">'+catTag(p)+f1Tag(p)+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(S.done[p.id]?'<span class="tag">Déjà fait</span>':'')+(!fit.all?'<span class="tag">Pas pour '+fit.miss.map(function(x){return x||"bébé";}).join(", ")+(fit.miss.some(function(x){return x>0;})?" ans":"")+'</span>':'')+'</span></span><span class="price">'+esc(priceLabel(p))+'</span></button></div>';
 }
 function renderFavs(){
   var html='<div class="plain"><h1 class="bigtitle">Mes sorties</h1>';
@@ -594,6 +821,10 @@ function renderFavs(){
   html+='<span class="label">Favoris</span>';
   if(!list.length)html+='<div class="empty" style="padding-top:8px">Touche le cœur sur une sortie pour la garder ici.</div>';
   else{html+='<div>';list.forEach(function(p){html+=rowHtml(p);});html+='</div>';}
+  var dl=P.filter(function(p){return S.done[p.id];}).sort(function(a,b){return S.done[b.id].t-S.done[a.id].t;});
+  html+='<span class="label" style="margin-top:8px">Déjà faites'+(dl.length?' · '+dl.length:'')+'</span>';
+  if(!dl.length)html+='<div class="empty" style="padding-top:8px">Dans une fiche, touche « On y est allés » : on ne vous la reproposera plus en premier.</div>';
+  else{html+='<div>';dl.forEach(function(p){var d=S.done[p.id];html+='<button class="row" data-open="'+p.id+'">'+tile(p)+'<span class="rowmain"><span class="rowtitle">'+esc(p.name)+'</span><span class="rowsub">Le '+esc(fmtDay(new Date(d.t)))+'</span></span>'+(d.r?'<span class="tag" style="background:'+(d.r==="like"?"#FFE1EC;color:#A3164F":"#F2F2F0;color:#5E5E5A")+'">'+(d.r==="like"?"Adoré":"Bof")+'</span>':'')+'</button>';});html+='</div>';}
   if(!S.tickets.length)html+='<div class="empty" style="padding-top:0">Tes réservations apparaîtront aussi ici.</div>';
   return html+'</div>';
 }
@@ -604,10 +835,12 @@ function renderAccount(){
    '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><label for="myname" class="label">Prénom</label><input id="myname" class="field" value="'+esc(me.name)+'" placeholder="Ton prénom" autocomplete="given-name"><span class="rowsub">Profil enregistré sur ce téléphone</span></div></div>';
   html+='<section class="sett"><h2 class="label">Ma famille</h2><button class="setrow" data-act="fam"><span>Qui vient ?</span><span>'+esc(famText())+'</span></button><button class="setrow" data-act="where"><span>Point de départ</span><span>'+esc(here()[0])+'</span></button></section>';
   html+='<section class="sett"><h2 class="label">Préférences</h2><div class="setrow" style="cursor:default"><span>Distance maximum</span></div><div class="chips" style="margin:0;padding:0 0 10px">'+mm.map(function(m){return '<button class="chip" data-maxmin="'+(m[0]||0)+'" aria-pressed="'+(S.prefs.maxMin===m[0])+'">'+m[1]+'</button>';}).join("")+'</div>'+
-   '<button class="setrow" data-act="notif" aria-pressed="'+!!S.prefs.notif+'"><span>Idées du samedi soir<br><span class="rowsub" style="font-weight:500">Rappel des sorties du dimanche, dans l’appli iPhone</span></span><span style="color:'+(S.prefs.notif?'#1E6B3A':'#5E5E5A')+'">'+(S.prefs.notif?'Oui':'Non')+'</span></button></section>';
-  html+='<section class="sett"><h2 class="label">Compte</h2><div class="setrow" style="cursor:default;opacity:.7"><span>Se connecter avec Apple<br><span class="rowsub" style="font-weight:500">Arrive avec l’appli iPhone : favoris et billets sur tous tes appareils</span></span><span>Bientôt</span></div></section>';
-  html+='<section class="sett"><h2 class="label">Mes données</h2><div class="setrow" style="cursor:default"><span>Favoris</span><span>'+S.favs.length+'</span></div><div class="setrow" style="cursor:default"><span>Billets</span><span>'+S.tickets.length+'</span></div><button class="setrow" data-act="wipe" style="color:#A8300C"><span>'+(S.wipeArm?"Touche encore pour tout effacer":"Effacer mes données")+'</span><span></span></button></section>';
-  html+='<section class="sett"><h2 class="label">À propos</h2><p class="rowsub" style="white-space:normal;line-height:1.5;margin:0">On sort · version de test. Agenda : <a href="https://opendata.paris.fr/explore/dataset/que-faire-a-paris-/" target="_blank" rel="noopener">Que faire à Paris</a> (Ville de Paris). Photos : <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>. Carte : <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles, données <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. Tarifs et horaires indicatifs.</p></section>';
+   '</section>';
+  var z=S.prefs.zone||"idf";
+  html+='<section class="sett"><h2 class="label">Zone de recherche</h2><div class="chips" style="margin:0;padding:6px 0 10px">'+[["paris","Paris"],["pc","Petite couronne"],["idf","Île-de-France"]].map(function(m){return '<button class="chip" data-zone="'+m[0]+'" aria-pressed="'+(z===m[0])+'">'+m[1]+'</button>';}).join("")+'</div>'+
+   '<button class="setrow" data-act="pmr" aria-pressed="'+!!S.prefs.pmr+'"><span>Poussette ou fauteuil<br><span class="rowsub" style="font-weight:500">Masque les lieux signalés sans accès</span></span><span style="color:'+(S.prefs.pmr?'#1E6B3A':'#5E5E5A')+'">'+(S.prefs.pmr?'Oui':'Non')+'</span></button></section>';
+  html+='<section class="sett"><h2 class="label">Mes données</h2><div class="setrow" style="cursor:default"><span>Favoris</span><span>'+S.favs.length+'</span></div><div class="setrow" style="cursor:default"><span>Sorties faites</span><span>'+Object.keys(S.done).length+'</span></div><div class="setrow" style="cursor:default"><span>Billets</span><span>'+S.tickets.length+'</span></div><button class="setrow" data-act="nostat" aria-pressed="'+!S.prefs.nostat+'"><span>Statistiques anonymes<br><span class="rowsub" style="font-weight:500;white-space:normal">Nombre de visites et de fiches ouvertes, sans nom ni position, pour améliorer l’appli</span></span><span style="color:'+(S.prefs.nostat?'#5E5E5A':'#1E6B3A')+'">'+(S.prefs.nostat?'Non':'Oui')+'</span></button><button class="setrow" data-act="wipe" style="color:#A8300C"><span>'+(S.wipeArm?"Touche encore pour tout effacer":"Effacer mes données")+'</span><span></span></button></section>';
+  html+='<section class="sett"><h2 class="label">À propos</h2><p class="rowsub" style="white-space:normal;line-height:1.5;margin:0">On sort · version de test. Agenda : <a href="https://opendata.paris.fr/explore/dataset/que-faire-a-paris-/" target="_blank" rel="noopener">Que faire à Paris</a> (Ville de Paris). Photos : <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>. Carte : <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles, données <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. Lieux d’Île-de-France : © contributeurs OpenStreetMap (ODbL). Météo : <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Toilettes : Ville de Paris. Tarifs et horaires indicatifs.</p></section>';
   return html+'</div>';
 }
 function bindAccount(){
@@ -618,7 +851,7 @@ function render(){
   var v=document.getElementById("view"),sc=document.getElementById("scroll"),top=sc?sc.scrollTop:0,f=document.activeElement&&document.activeElement.id;
   v.innerHTML=S.tab==="explore"?renderExplore():S.tab==="me"?renderAccount():renderFavs();if(S.tab==="me")bindAccount();
   document.querySelectorAll("nav.tabs button").forEach(function(b){if(b.dataset.tab===S.tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});
-  v.classList.toggle("full",S.tab==="explore"&&!!S.full);if(S.tab==="explore"){drawMap(results());bindMap();var ns=document.getElementById("scroll");if(ns)ns.scrollTop=top;var q=document.getElementById("q");if(q){q.addEventListener("input",function(){S.q=q.value;var pos=q.selectionStart;render();var nq=document.getElementById("q");nq.focus();try{nq.setSelectionRange(pos,pos);}catch(e){}});if(f==="q")q.focus();}}
+  v.classList.toggle("full",S.tab==="explore"&&!!S.full);if(S.tab==="explore"){drawMap(results());bindMap();var ns=document.getElementById("scroll");if(ns)ns.scrollTop=top;var q=document.getElementById("q");if(q){q.addEventListener("input",function(){S.q=q.value;S.limit=30;var pos=q.selectionStart;render();var nq=document.getElementById("q");nq.focus();try{nq.setSelectionRange(pos,pos);}catch(e){}});if(f==="q")q.focus();}observeRows();}
 }
 
 /* ---------- Fenêtres ---------- */
@@ -626,28 +859,38 @@ function closeOv(){var o=document.querySelector(".overlay");if(o)o.remove();}
 function ov(html,dim){closeOv();var d=document.createElement("div");d.className="overlay"+(dim?" dim":"");d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.innerHTML=html;document.getElementById("app").appendChild(d);var f=d.querySelector("button,a,input");if(f)f.focus();return d;}
 var SHARE='<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
 function openPlace(id){
-  var p=P.filter(function(x){return x.id===id;})[0];if(!p)return;
+  var p=byId(id);if(!p)return;track("fiche",p.id);
   var fav=S.favs.indexOf(p.id)>=0,open=isOpen(p,S.date),k=km(p),st=hoursStatus(p),fit=ageFit(p),ft=famTotal(p);
   var e=eff(p),bookable=e.ad!=null&&e.en!=null&&(e.ad>0||e.en>0)&&open;
   var dir="https://www.google.com/maps/dir/?api=1&destination="+p.lat+","+p.lng;
-  var rows='<div class="fact"><span>'+esc(fmtDay(S.date))+'</span><span style="color:'+(open?(st?st.c:"#1E6B3A"):"#A8300C")+'">'+(open?(st?esc(st.t):"Ouvert · "+esc(p.hours)):"Fermé ce jour-là")+'</span></div>';
+  var today=key(S.date)===key(TODAY),hf=hoursFor(p,S.date),unk=unknownHours(p),closed=!open||(st&&st.closed);
+  var stTxt=!open?"Fermé "+(today?"aujourd'hui":"ce jour-là"):unk?"Horaires inconnus · à vérifier sur le site":st?st.t:/\dh/.test(hf)?"Ouvert "+(today?"aujourd'hui":fmtDay(S.date))+" · "+hf:"Ouvert "+(today?"aujourd'hui":fmtDay(S.date))+" · horaires sur le site";
+  var later=!closed&&!unk&&st&&!st.now&&!/bientôt/.test(st.t);
+  var status=p.evt?'':'<div class="status" style="background:'+(closed?"#FFE1D6":unk?"#F2F2F0":later?"#FFF0B8":"#DFF5D3")+';color:'+(closed?"#A8300C":unk?"#5E5E5A":later?"#6E4D00":"#1E6B3A")+'"><i style="background:'+(closed?"#A8300C":unk?"#9A9A95":later?"#C98A00":"#1E6B3A")+'"></i>'+esc(stTxt)+'</div>';
+  var wk=p.evt?null:weekHours(p,S.date);
+  var week=wk?'<div style="display:flex;flex-direction:column;gap:6px"><span class="label">Horaires des 7 prochains jours</span><div class="facts">'+wk.map(function(r,i){return '<div class="fact"><span>'+esc((i===0&&key(r.d)===key(TODAY)?"Aujourd'hui":fmtDay(r.d))+(r.hol?" · férié":""))+'</span><span style="color:'+(r.op?"#0B0B0B":"#A8300C")+'">'+esc(r.h)+'</span></div>';}).join("")+'</div><span class="small">'+(p.osm?"Horaires OpenStreetMap, à confirmer sur le site du lieu.":"Horaires indicatifs, à confirmer sur le site du lieu.")+'</span></div>':'';
+  var dn=S.done[p.id];
+  var donebox='<div class="donebox"><button class="donebtn" data-done="'+p.id+'" aria-pressed="'+!!dn+'"><span class="check'+(dn?" on":"")+'">'+(dn?"✓":"")+'</span><span style="display:flex;flex-direction:column"><b>On y est allés</b><span class="rowsub">'+(dn?"Le "+esc(fmtDay(new Date(dn.t))):"Pour ne plus vous la proposer en premier")+'</span></span></button>'+(dn?'<div style="display:flex;gap:8px"><button class="chip" data-rate="like" data-pid="'+p.id+'" aria-pressed="'+(dn.r==="like")+'">On a adoré</button><button class="chip" data-rate="meh" data-pid="'+p.id+'" aria-pressed="'+(dn.r==="meh")+'">Bof</button></div>':'')+'</div>';
+  var rows='';
   if(S.fam&&ft!=null)rows+='<div class="fact"><span>Pour vous ('+esc(famText())+')</span><span style="font-size:16px">'+(ft===0?"Gratuit":eur(ft))+'</span></div>';
   if(p.f1){var nf=nextF1(p);rows+=f1Today(p)?'<div class="fact" style="background:#DFF5D3"><span style="color:#1E6B3A">1er dimanche du mois</span><span style="color:#1E6B3A">Gratuit pour tous'+(p.f1.resa?' · réservation '+esc(p.f1.resa):'')+'</span></div>':(nf?'<div class="fact"><span>Gratuit pour tous</span><span>le '+esc(fmtDay(nf))+(p.f1.resa?' · réservation '+esc(p.f1.resa):'')+'</span></div>':'');}
-  rows+='<div class="fact"><span>Adulte</span><span>'+(e.ad==null?"Voir le site":e.ad===0?"Gratuit":eur(e.ad))+'</span></div><div class="fact"><span>Enfant</span><span>'+(e.en==null?"Voir le site":e.en===0?"Gratuit":eur(e.en))+'</span></div><div class="fact"><span>À savoir</span><span>'+esc(p.note)+'</span></div>';
+  rows+='<div class="fact"><span>Adulte</span><span>'+(e.ad==null?"Voir le site":e.ad===0?"Gratuit":eur(e.ad))+'</span></div><div class="fact"><span>Enfant</span><span>'+(e.en==null?"Voir le site":e.en===0?"Gratuit":eur(e.en))+'</span></div>'+(p.wheel==="yes"||p.wheel==="limited"||p.wheel==="no"?'<div class="fact"><span>Poussette / fauteuil</span><span style="color:'+(p.wheel==="no"?"#A8300C":"#0B0B0B")+'">'+(p.wheel==="yes"?"Accessible":p.wheel==="limited"?"Accès partiel":"Non accessible")+'</span></div>':'')+'<div class="fact"><span>À savoir</span><span>'+esc(p.note)+'</span></div>';
   if(p.evt){rows='<div class="fact"><span>Dates</span><span>'+esc(evDates(p))+'</span></div><div class="fact"><span>Prix</span><span>'+(p.ad===0?"Gratuit":"Voir le site")+'</span></div><div class="fact"><span>À savoir</span><span>'+esc(p.note.slice(0,160))+'</span></div>'+(p.url?'<div class="fact"><span>Programme</span><span><a href="'+esc(p.url)+'" target="_blank" rel="noopener">Que faire à Paris</a></span></div>':'');}
   var h='<div class="ovtop"><button class="round" data-act="close" aria-label="Retour">'+BACK+'</button><span style="display:flex;gap:8px"><button class="round" data-share="'+p.id+'" aria-label="Partager">'+SHARE+'</button><button class="round" data-fav="'+p.id+'" aria-label="'+(fav?"Retirer des favoris":"Ajouter aux favoris")+'" aria-pressed="'+fav+'">'+heart(fav)+'</button></span></div>'+
   '<div class="ovbody">'+heroHtml(p)+
   '<div style="display:flex;flex-direction:column;gap:6px"><h2 class="headline" style="font-size:28px">'+esc(p.name)+'</h2><span class="label">'+esc(p.area)+' · '+esc(travel(k))+' depuis '+esc(here()[0])+'</span>'+
   '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+catTag(p)+'<span class="tag">'+esc(ageText(p))+'</span><span class="tag">'+esc(p.io)+'</span>'+(p.isNew?'<span class="tag new">Nouveau</span>':'')+(p.offer?'<span class="tag" style="background:#FF5B2E">−'+p.offer+' % On sort</span>':'')+'</div>'+
   (!fit.all?'<span style="font-size:13px;font-weight:600;color:#A8300C">Pas adapté à '+fit.miss.map(function(x){return x?x+" ans":"bébé";}).join(" ni à ")+'</span>':'')+'</div>'+
-  '<p style="margin:0;line-height:1.5">'+esc(p.desc)+'</p><div class="facts">'+rows+'</div>'+
-  '<p class="banner">Infos de test, indicatives. Dans l\'appli finale : source et heure de mise à jour (Que faire à Paris, DATAtourisme, OpenAgenda ou le lieu lui-même).</p></div>'+
-  '<div class="ovfoot">'+(bookable?'<a class="ghost" href="'+dir+'" target="_blank" rel="noopener">Y aller</a><button class="cta" data-book="'+p.id+'">Réserver'+(p.offer?' · −'+p.offer+' %':'')+'</button>':'<a class="cta" href="'+dir+'" target="_blank" rel="noopener">Y aller</a>')+'</div>';
-  ov(h);bindGallery(p);
+  status+(p.desc?'<p style="margin:0;line-height:1.5">'+esc(p.desc)+'</p>':'')+'<div class="facts">'+rows+'</div>'+week+donebox+'<div id="nearby" style="display:flex;flex-direction:column;gap:6px"></div>'+
+  (p.web?'<a href="'+esc(p.web)+'" target="_blank" rel="noopener" class="label" style="text-decoration:underline">Site du lieu</a>':'')+
+  '<p class="banner">'+(p.osm?"Lieu issu d’OpenStreetMap (© contributeurs OpenStreetMap). Horaires et tarifs à vérifier sur le site du lieu.":"Infos indicatives, à vérifier sur le site du lieu.")+'</p></div>'+
+  '<div class="ovfoot">'+(bookable?'<a class="ghost" href="'+dir+'" target="_blank" rel="noopener" data-track="go" data-pid="'+p.id+'">Y aller</a><button class="cta" data-book="'+p.id+'">Réserver'+(p.offer?' · −'+p.offer+' %':'')+'</button>':'<a class="cta" href="'+dir+'" target="_blank" rel="noopener" data-track="go" data-pid="'+p.id+'">Y aller</a>')+'</div>';
+  var sy=document.querySelector(".overlay .ovbody");sy=sy&&document.querySelector(".overlay").getAttribute("data-pid")===p.id?sy.scrollTop:0;
+  var o=ov(h);o.setAttribute("data-pid",p.id);bindGallery(p);fillNearby(p);if(!PH[p.id]&&p.osm)lazyPhoto(p);if(sy){var b=o.querySelector(".ovbody");if(b)b.scrollTop=sy;}
 }
 var BK={ad:2,en:2};
 function openBook(id){
-  var p=P.filter(function(x){return x.id===id;})[0];
+  var p=byId(id);
   var sub=BK.ad*p.ad+BK.en*p.en,off=p.offer?Math.round(sub*p.offer)/100:0,tot=sub-off;
   var h='<div class="ovtop"><button class="round" data-open="'+p.id+'" aria-label="Retour">'+BACK+'</button><span></span></div><div class="ovbody"><h2 class="bigtitle" style="font-size:30px">Réserver</h2><span class="label">'+esc(p.name)+' · '+esc(fmtDay(S.date))+'</span>'+
   '<div><div class="stepper"><span style="font-weight:600;font-size:16px">Adultes · '+(p.ad?eur(p.ad):"gratuit")+'</span><div><button data-step="ad,-1" aria-label="Un adulte de moins">−</button><b>'+BK.ad+'</b><button data-step="ad,1" aria-label="Un adulte de plus">+</button></div></div>'+
@@ -657,7 +900,7 @@ function openBook(id){
   ov(h);
 }
 function openTicket(i){
-  var t=S.tickets[i],p=P.filter(function(x){return x.id===t.id;})[0];
+  var t=S.tickets[i],p=byId(t.id);
   var h='<div class="ovtop"><span></span><button class="round" data-act="close" aria-label="Fermer" style="background:#0B0B0B;color:#fff">'+X+'</button></div><div class="ovbody"><h2 class="bigtitle" style="font-size:52px;letter-spacing:-2px;line-height:.95">C’est<br>réservé.</h2>'+
   '<div class="tcard"><div style="display:flex;gap:14px;align-items:center"><canvas id="qr" width="105" height="105" role="img" aria-label="QR code fictif du billet"></canvas><div style="display:flex;flex-direction:column;gap:4px"><b style="font-size:18px;line-height:1.2">'+esc(p.name)+'</b><span class="label">Billet de démonstration</span></div></div><div style="height:1px;background:#E6E6E2"></div>'+
   '<div class="grid2"><div><small>Quand</small><b>'+esc(fmtDay(new Date(t.date)))+'</b></div><div><small>Qui</small><b>'+t.ad+' ad. · '+t.en+' enf.</b></div><div><small>Total</small><b>'+eur(t.total)+'</b></div><div><small>Économisé</small><b style="color:#B8360F">'+eur(t.saved)+'</b></div></div></div></div>'+
@@ -704,7 +947,7 @@ function openPick(){
   if(p.offer)why.push('<span class="tag" style="background:#FF5B2E">−'+p.offer+' %</span>');
   var pic=ph?'<img src="'+esc(ph.t)+'" alt="" style="width:100%;height:100%;object-fit:cover">':ill(p.id);
   var h='<div class="panel"><div class="ovtop"><b style="font-size:18px">Notre idée '+(PICKN%L.length+1)+' / '+L.length+'</b><button class="round" data-act="close" aria-label="Fermer">'+X+'</button></div><div class="ovbody">'+
-    '<div class="hero" style="height:200px;background:'+(ILL[p.id]||["#F2F2F0"])[0]+'">'+pic+'</div>'+
+    '<div class="hero" style="height:200px;background:'+bgOf(p.id)+'">'+pic+'</div>'+
     '<h2 class="headline" style="font-size:28px">'+esc(p.name)+'</h2><span class="label" style="margin-top:-8px">'+esc(p.area)+'</span>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap">'+why.join("")+'</div></div>'+
     '<div class="ovfoot"><button class="ghost" data-act="picknext">Une autre idée</button><button class="cta" data-open="'+p.id+'">C’est parti</button></div></div>';
@@ -720,8 +963,21 @@ function openFam(){
   '<div class="ovfoot"><button class="cta" data-act="famdone">Voir les sorties</button></div></div>';
   ov(h,true);
 }
+function openOnb(){
+  var f=S.fam||{ad:2,kids:[]},h=here();
+  var html='<div class="ovbody" style="padding-top:28px;gap:18px"><div style="display:flex;align-items:center;gap:10px">'+logoMark(40)+'<span style="font-family:var(--display);font-weight:800;font-size:24px">on sort<i style="font-style:normal;color:#FF5B2E">.</i></span></div>'+
+   '<h1 class="bigtitle" style="font-size:30px">Où sortir avec les enfants, sans chercher.</h1><span class="rowsub" style="white-space:normal;margin-top:-8px">Deux réponses et on vous propose les meilleures idées du jour.</span>'+
+   '<span class="label">1. L’âge des enfants</span><div style="display:flex;gap:8px;flex-wrap:wrap">'+(f.kids.length?f.kids.map(function(k,i){return '<button class="chip" aria-pressed="true" data-kidrm="'+i+'">'+(k?k+" an"+(k>1?"s":""):"Bébé")+'  ✕</button>';}).join(""):'<span class="rowsub">Touche les âges ci-dessous</span>')+'</div>'+
+   '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(function(a){return '<button class="chip" style="padding:0" data-kidadd="'+a+'">'+(a?a+" an"+(a>1?"s":""):"Bébé")+'</button>';}).join("")+'</div>'+
+   '<span class="label">2. Vous partez de</span><button class="ghost" data-act="gps" style="justify-content:flex-start">'+(S.geo?"✓ Ma position":"Utiliser ma position")+'</button>'+
+   '<select class="field" id="onbwhere" aria-label="Ou choisir un quartier">'+PLACES.map(function(pl,i){return '<option value="'+i+'"'+(!S.geo&&i===S.where?" selected":"")+'>'+esc(pl[0])+'</option>';}).join("")+'</select></div>'+
+   '<div class="ovfoot" style="flex-direction:column"><button class="cta" data-act="onbdone">Voir nos idées</button><button data-act="onbdone" class="label" style="height:36px">Plus tard</button></div>';
+  var o=ov(html);o.setAttribute("data-onb","1");
+  o.querySelector("#onbwhere").addEventListener("change",function(e){S.geo=null;S.where=+e.target.value;save("where",S.where);dirty();loadWeather();});
+}
+function refreshOv(){if(document.querySelector('.overlay[data-onb]'))openOnb();else openFam();}
 function share(id){
-  var p=P.filter(function(x){return x.id===id;})[0];
+  var p=byId(id);track("share",id);
   var txt="On y va ? "+p.name+" ("+p.area+"), "+fmtDay(S.date)+". Trouvé sur On sort.";
   var done=function(){toast("Message copié, colle-le dans WhatsApp");};
   try{navigator.clipboard.writeText(txt).then(done,function(){toast(txt);});}catch(e){toast(txt);}
@@ -729,10 +985,19 @@ function share(id){
 
 /* ---------- Événements ---------- */
 document.getElementById("app").addEventListener("click",function(e){
-  var el=e.target.closest("[data-maxmin],[data-quick],[data-famad],[data-kidadd],[data-kidrm],[data-tab],[data-act],[data-date],[data-budget],[data-age],[data-io],[data-cat],[data-zoom],[data-open],[data-fav],[data-book],[data-step],[data-confirm],[data-ticket],[data-where],[data-share]");
+  var tr=e.target.closest("[data-track]");if(tr)track(tr.dataset.track,tr.dataset.pid);
+  var el=e.target.closest("[data-done],[data-rate],[data-zone],[data-maxmin],[data-quick],[data-famad],[data-kidadd],[data-kidrm],[data-tab],[data-act],[data-date],[data-budget],[data-age],[data-io],[data-cat],[data-zoom],[data-open],[data-fav],[data-book],[data-step],[data-confirm],[data-ticket],[data-where],[data-share]");
   if(SUPPRESS&&e.target.closest("#map,.grabbtn"))return;
   if(!el){if(e.target.classList.contains("dim"))closeOv();return;}
   var d=el.dataset;
+  if(d.pick)track("pick",d.open);
+  if(d.done){if(S.done[d.done])delete S.done[d.done];else S.done[d.done]={t:Date.now(),r:""};save("done",S.done);dirty();openPlace(d.done);render();return;}
+  if(d.rate){var dd=S.done[d.pid];if(dd){dd.r=dd.r===d.rate?"":d.rate;save("done",S.done);}openPlace(d.pid);return;}
+  if(d.zone){S.prefs.zone=d.zone;save("prefs",S.prefs);S.limit=30;render();return;}
+  if(d.act==="pmr"){S.prefs.pmr=!S.prefs.pmr;save("prefs",S.prefs);render();return;}
+  if(d.act==="nostat"){S.prefs.nostat=!S.prefs.nostat;save("prefs",S.prefs);render();return;}
+  if(d.act==="more"){S.limit+=30;render();return;}
+  if(d.act==="onbdone"){save("onb",1);if(!S.fam){S.fam={ad:2,kids:[]};save("fam",S.fam);}closeOv();render();return;}
   if(d.tab){S.tab=d.tab;closeOv();render();return;}
   if(d.act==="close"){closeOv();return;}
   if(d.act==="fam"){openFam();return;}
@@ -741,7 +1006,7 @@ document.getElementById("app").addEventListener("click",function(e){
   if(d.act==="pick"){PICKN=0;openPick();return;}
   if(d.act==="picknext"){PICKN++;openPick();return;}
   if(d.act==="nap"){S.fam=S.fam||{ad:2,kids:[]};S.fam.nap=!S.fam.nap;save("fam",S.fam);openFam();render();return;}
-  if(d.act==="gps"){requestGPS(true);return;}
+  if(d.act==="gps"){requestGPS(true,document.querySelector(".overlay[data-onb]"));return;}
   if(d.act==="famdone"){if(!S.fam){S.fam={ad:2,kids:[]};save("fam",S.fam);}closeOv();render();return;}
   if(d.act==="clearq"){S.q="";render();return;}
   if(d.act==="sheet"){S.full=!S.full;render();return;}
@@ -751,33 +1016,36 @@ document.getElementById("app").addEventListener("click",function(e){
   if(d.act==="date"){openDate();return;}
   if(d.act==="reset"){S.q="";S.ages=[];S.budget="all";S.io="all";S.cat="all";render();return;}
   if(d.maxmin!=null){S.prefs.maxMin=+d.maxmin||null;save("prefs",S.prefs);render();return;}
-  if(d.quick){S.quick[d.quick]=!S.quick[d.quick];render();return;}
-  if(d.famad){S.fam=S.fam||{ad:2,kids:[]};S.fam.ad=Math.max(1,Math.min(6,S.fam.ad+(+d.famad)));save("fam",S.fam);openFam();render();return;}
-  if(d.kidadd!=null){S.fam=S.fam||{ad:2,kids:[]};if(S.fam.kids.length<8)S.fam.kids.push(+d.kidadd);save("fam",S.fam);openFam();render();return;}
-  if(d.kidrm!=null){S.fam.kids.splice(+d.kidrm,1);save("fam",S.fam);openFam();render();return;}
-  if(d.date){S.date=new Date(+d.date);closeOv();render();return;}
+  if(d.quick){S.quick[d.quick]=!S.quick[d.quick];S.limit=30;render();return;}
+  if(d.famad){S.fam=S.fam||{ad:2,kids:[]};S.fam.ad=Math.max(1,Math.min(6,S.fam.ad+(+d.famad)));save("fam",S.fam);refreshOv();render();return;}
+  if(d.kidadd!=null){S.fam=S.fam||{ad:2,kids:[]};if(S.fam.kids.length<8)S.fam.kids.push(+d.kidadd);save("fam",S.fam);refreshOv();render();return;}
+  if(d.kidrm!=null){S.fam.kids.splice(+d.kidrm,1);save("fam",S.fam);refreshOv();render();return;}
+  if(d.date){S.date=new Date(+d.date);S.limit=30;closeOv();render();return;}
   if(d.budget){S.budget=d.budget;render();return;}
   if(d.age){var i=+d.age,ix=S.ages.indexOf(i);if(ix>=0)S.ages.splice(ix,1);else S.ages.push(i);render();return;}
   if(d.io){S.io=d.io;if(d.io==="all")S.cat="all";render();return;}
   if(d.cat){S.cat=S.cat===d.cat?"all":d.cat;render();return;}
   if(d.zoom){S.zoom=d.zoom;MV={z:1,c:null};render();return;}
-  if(d.where){S.geo=null;S.where=+d.where;MV={z:1,c:null};save("where",S.where);closeOv();render();return;}
-  if(d.fav){var j=S.favs.indexOf(d.fav);if(j>=0)S.favs.splice(j,1);else S.favs.push(d.fav);save("favs",S.favs);if(S.tab==="favs")render();openPlace(d.fav);toast(j>=0?"Retiré des favoris":"Ajouté aux favoris");return;}
-  if(d.book){var bp=P.filter(function(x){return x.id===d.book;})[0];BK=S.fam?{ad:S.fam.ad,en:S.fam.kids.filter(function(k){return !(bp.free3&&k<3);}).length}:{ad:2,en:2};openBook(d.book);return;}
+  if(d.where){S.geo=null;S.where=+d.where;MV={z:1,c:null};save("where",S.where);S.limit=30;closeOv();render();loadWeather();return;}
+  if(d.fav){var j=S.favs.indexOf(d.fav);if(j>=0)S.favs.splice(j,1);else S.favs.push(d.fav);save("favs",S.favs);dirty();if(S.tab==="favs")render();openPlace(d.fav);toast(j>=0?"Retiré des favoris":"Ajouté aux favoris");return;}
+  if(d.book){var bp=byId(d.book);BK=S.fam?{ad:S.fam.ad,en:S.fam.kids.filter(function(k){return !(bp.free3&&k<3);}).length}:{ad:2,en:2};openBook(d.book);return;}
   if(d.step){var s=d.step.split(","),pid=document.querySelector("[data-confirm]").dataset.confirm;BK[s[0]]=Math.max(0,Math.min(9,BK[s[0]]+(+s[1])));openBook(pid);return;}
-  if(d.confirm){var p=P.filter(function(x){return x.id===d.confirm;})[0],sub=BK.ad*p.ad+BK.en*p.en,off=p.offer?Math.round(sub*p.offer)/100:0;S.tickets.push({id:p.id,date:S.date.getTime(),ad:BK.ad,en:BK.en,total:sub-off,saved:off});save("tickets",S.tickets);if(S.tab==="tickets")render();openTicket(S.tickets.length-1);return;}
+  if(d.confirm){var p=byId(d.confirm),sub=BK.ad*p.ad+BK.en*p.en,off=p.offer?Math.round(sub*p.offer)/100:0;S.tickets.push({id:p.id,date:S.date.getTime(),ad:BK.ad,en:BK.en,total:sub-off,saved:off});save("tickets",S.tickets);if(S.tab==="tickets")render();openTicket(S.tickets.length-1);return;}
   if(d.ticket){openTicket(+d.ticket);return;}
   if(d.share){share(d.share);return;}
   if(d.open){openPlace(d.open);return;}
 });
-document.addEventListener("keydown",function(e){if(e.key==="Escape")closeOv();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeOv();if((e.key==="Enter"||e.key===" ")&&e.target.classList&&e.target.classList.contains("selcard")){e.preventDefault();e.target.click();}});
 document.addEventListener("gesturestart",function(e){e.preventDefault();});
 var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){if(S.tab==="explore")drawMap(results());},120);});
 render();
-requestGPS(false);
+if(!load("onb",0)&&!S.fam)openOnb();else requestGPS(false);
+track("open");
+initML();
+loadWeather();
 loadPhotos();
 loadEvents();
-initML();
+setTimeout(loadOSM,600);
 })();
 </script>
 
